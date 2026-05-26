@@ -1,7 +1,8 @@
 """Smoke tests for the dataclasses in pipeline.models — no network, no I/O."""
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pipeline.models import (
     Block,
@@ -14,14 +15,13 @@ from pipeline.models import (
     ProjectState,
     ProjectStatus,
     StorageKey,
-    TranscriptionResult,
     TranscriptionSegment,
     ValidationResult,
 )
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def test_project_round_trip_via_dict():

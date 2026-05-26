@@ -1,4 +1,5 @@
 """Smoke tests for PipelineOrchestrator — mocked StorageAdapter, no network."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock
@@ -7,7 +8,6 @@ import pytest
 
 from pipeline.models import ProjectStatus
 from pipeline.orchestrator import (
-    InvalidPhaseOrderError,
     PipelineOrchestrator,
     ProjectNotFoundError,
 )
@@ -28,7 +28,7 @@ def test_orchestrator_constructs_without_network():
 
 def test_register_phase_records_runner():
     o, _ = _orchestrator_with_mocked_storage()
-    runner = lambda state: {}                 # noqa: E731 — minimal stub
+    runner = lambda state: {}  # noqa: E731 — minimal stub
     o.register_phase(1, runner)
     assert 1 in o._phase_runners
     assert o._phase_runners[1] is runner
@@ -43,7 +43,7 @@ def test_load_checkpoint_raises_on_missing_project():
 
 def test_create_project_uses_supplied_format_id():
     o, storage = _orchestrator_with_mocked_storage()
-    storage.exists.return_value = False        # project_id slug is unused
+    storage.exists.return_value = False  # project_id slug is unused
     state = o.create_project(
         title="Test",
         video_local_path="/tmp/v.mp4",

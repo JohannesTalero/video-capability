@@ -11,6 +11,7 @@ Responsibilities:
 Modal worker: GPU (any available), timeout 20 min
 Local run: uses Whisper on CPU (slow, for testing without Modal)
 """
+
 from __future__ import annotations
 
 import json
@@ -22,8 +23,8 @@ from pathlib import Path
 import modal
 
 from pipeline.config import (
-    WHISPER_MODEL,
     WHISPER_LANGUAGE,
+    WHISPER_MODEL,
     get_project_tmp_dir,
 )
 from pipeline.models import (
@@ -59,11 +60,12 @@ whisper_image = (
 # Modal GPU function — Whisper transcription
 # ---------------------------------------------------------------------------
 
+
 @app.function(
     image=whisper_image,
     gpu="any",
     timeout=1200,  # 20 minutes
-    retries=0,     # Orchestrator handles retries
+    retries=0,  # Orchestrator handles retries
 )
 def transcribe_on_modal(
     audio_key: str,
@@ -86,11 +88,11 @@ def transcribe_on_modal(
         model_name: Whisper model id
         language: ISO-639-1 code, e.g. "es"
     """
-    import tempfile
     from pathlib import Path
+
     import boto3
-    from botocore.client import Config
     import whisper
+    from botocore.client import Config
 
     # Build storage client inside the Modal worker
     provider = storage_config["provider"]
@@ -125,7 +127,7 @@ def transcribe_on_modal(
     print(f"[Modal] Loading Whisper model: {model_name}")
     model = whisper.load_model(model_name)
 
-    print(f"[Modal] Transcribing...")
+    print("[Modal] Transcribing...")
     result = model.transcribe(
         audio_path,
         language=language,
@@ -135,15 +137,17 @@ def transcribe_on_modal(
 
     segments = []
     for i, seg in enumerate(result["segments"]):
-        segments.append({
-            "id": i,
-            "start": seg["start"],
-            "end": seg["end"],
-            "text": seg["text"].strip(),
-            # Whisper doesn't always return per-segment confidence
-            # Use avg_logprob as a proxy: convert from log space
-            "confidence": min(1.0, max(0.0, (seg.get("avg_logprob", -0.5) + 1.0))),
-        })
+        segments.append(
+            {
+                "id": i,
+                "start": seg["start"],
+                "end": seg["end"],
+                "text": seg["text"].strip(),
+                # Whisper doesn't always return per-segment confidence
+                # Use avg_logprob as a proxy: convert from log space
+                "confidence": min(1.0, max(0.0, (seg.get("avg_logprob", -0.5) + 1.0))),
+            }
+        )
 
     return {
         "segments": segments,
@@ -156,6 +160,7 @@ def transcribe_on_modal(
 # ---------------------------------------------------------------------------
 # Phase 1 Runner — called by PipelineOrchestrator
 # ---------------------------------------------------------------------------
+
 
 def run_phase_1(state: ProjectState) -> dict:
     """
@@ -199,7 +204,9 @@ def run_phase_1(state: ProjectState) -> dict:
     video_key = state.project.video_original_key
     video_local = tmp_dir / Path(video_key).name
     if video_local.exists() and video_local.stat().st_size > 0:
-        logger.info(f"[Phase 1] Video already local: {video_local} ({video_local.stat().st_size / 1024:.0f} KB)")
+        logger.info(
+            f"[Phase 1] Video already local: {video_local} ({video_local.stat().st_size / 1024:.0f} KB)"
+        )
     else:
         logger.info(f"[Phase 1] Downloading video: {video_key}")
         storage.download(video_key, video_local)
@@ -214,7 +221,7 @@ def run_phase_1(state: ProjectState) -> dict:
 
     # Step 4: Get video duration
     duration = _get_duration(video_local)
-    logger.info(f"[Phase 1] Video duration: {duration:.1f}s ({duration/60:.1f} min)")
+    logger.info(f"[Phase 1] Video duration: {duration:.1f}s ({duration / 60:.1f} min)")
 
     # Step 5: Upload extracted audio to storage (skip if already uploaded).
     # Modal worker will download it from storage (avoids RPC size limits).
@@ -276,15 +283,21 @@ def run_phase_1(state: ProjectState) -> dict:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _extract_audio(video_path: Path, audio_path: Path) -> None:
     """Use FFmpeg to extract mono WAV audio at 16kHz (Whisper optimal)."""
     cmd = [
-        "ffmpeg", "-y",
-        "-i", str(video_path),
-        "-vn",                      # no video
-        "-acodec", "pcm_s16le",     # WAV PCM 16-bit
-        "-ar", "16000",             # 16kHz sample rate
-        "-ac", "1",                 # mono
+        "ffmpeg",
+        "-y",
+        "-i",
+        str(video_path),
+        "-vn",  # no video
+        "-acodec",
+        "pcm_s16le",  # WAV PCM 16-bit
+        "-ar",
+        "16000",  # 16kHz sample rate
+        "-ac",
+        "1",  # mono
         str(audio_path),
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -298,12 +311,17 @@ def _get_duration(video_path: Path) -> float:
     """Use ffprobe to get video duration in seconds."""
     result = subprocess.run(
         [
-            "ffprobe", "-v", "error",
-            "-show_entries", "format=duration",
-            "-of", "json",
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "json",
             str(video_path),
         ],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     if result.returncode != 0:
         raise RuntimeError(f"ffprobe duration check failed: {result.stderr}")
@@ -346,10 +364,17 @@ def _build_storage_config_for_modal() -> dict:
     """Snapshot of local storage env vars to pass to the Modal worker.
     Modal worker uses this to reconstruct a boto3 client and download audio."""
     from pipeline.config import (
+        AWS_ACCESS_KEY_ID,
+        AWS_REGION,
+        AWS_SECRET_ACCESS_KEY,
+        R2_ACCESS_KEY_ID,
+        R2_BUCKET_NAME,
+        R2_ENDPOINT_URL,
+        R2_SECRET_KEY,
+        S3_BUCKET_NAME,
         STORAGE_PROVIDER,
-        R2_ACCESS_KEY_ID, R2_SECRET_KEY, R2_ENDPOINT_URL, R2_BUCKET_NAME,
-        AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, S3_BUCKET_NAME,
     )
+
     if STORAGE_PROVIDER == "r2":
         return {
             "provider": "r2",
@@ -387,13 +412,15 @@ def _transcribe_local(audio_path: Path) -> dict:
     )
     segments = []
     for i, seg in enumerate(result["segments"]):
-        segments.append({
-            "id": i,
-            "start": seg["start"],
-            "end": seg["end"],
-            "text": seg["text"].strip(),
-            "confidence": min(1.0, max(0.0, (seg.get("avg_logprob", -0.5) + 1.0))),
-        })
+        segments.append(
+            {
+                "id": i,
+                "start": seg["start"],
+                "end": seg["end"],
+                "text": seg["text"].strip(),
+                "confidence": min(1.0, max(0.0, (seg.get("avg_logprob", -0.5) + 1.0))),
+            }
+        )
     return {
         "segments": segments,
         "full_text": result["text"].strip(),
@@ -415,6 +442,7 @@ def _cleanup(tmp_dir: Path) -> None:
 # ---------------------------------------------------------------------------
 # Self-registration with orchestrator (lazy import pattern)
 # ---------------------------------------------------------------------------
+
 
 def register(orchestrator) -> None:
     """

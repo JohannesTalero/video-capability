@@ -8,6 +8,7 @@ Usage:
     python scripts/resume_pipeline.py --project-id ondas-ep12-20260521 --skip-validation
     python scripts/resume_pipeline.py --project-id ondas-ep12-20260521 --status
 """
+
 import argparse
 import logging
 import sys
@@ -15,6 +16,7 @@ from pathlib import Path
 
 try:
     from dotenv import load_dotenv
+
     load_dotenv()
 except ImportError:
     pass
@@ -29,9 +31,10 @@ logger = logging.getLogger("phymac.cli.resume")
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from pipeline.orchestrator import PipelineOrchestrator
-from pipeline.storage import StorageAdapter
+
 # Import all phase runners so they register themselves
 from pipeline.phases.phase1_ingest import register as r1
+from pipeline.storage import StorageAdapter
 
 
 def register_all_phases(orchestrator):
@@ -47,6 +50,7 @@ def register_all_phases(orchestrator):
 def _status_report(state) -> None:
     """Print a formatted status report of the project."""
     from pipeline.models import PhaseStatus
+
     icons = {
         PhaseStatus.PENDING: "⏳",
         PhaseStatus.RUNNING: "🔄",
@@ -77,10 +81,14 @@ def main():
     )
     parser.add_argument("--project-id", required=True, help="Project ID to resume")
     parser.add_argument("--from-phase", type=int, help="Force start from this phase (1-6)")
-    parser.add_argument("--skip-validation", action="store_true",
-                        help="Skip ValidationAgent (manual override — use carefully)")
-    parser.add_argument("--status", action="store_true",
-                        help="Show project status without running anything")
+    parser.add_argument(
+        "--skip-validation",
+        action="store_true",
+        help="Skip ValidationAgent (manual override — use carefully)",
+    )
+    parser.add_argument(
+        "--status", action="store_true", help="Show project status without running anything"
+    )
     args = parser.parse_args()
 
     storage = StorageAdapter()

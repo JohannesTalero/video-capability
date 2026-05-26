@@ -9,6 +9,7 @@ Responsibilities:
 
 The Phase 2 runner is registered with PipelineOrchestrator via `register()`.
 """
+
 from __future__ import annotations
 
 import json
@@ -33,6 +34,7 @@ logger = logging.getLogger(__name__)
 # Phase 2 Runner
 # ---------------------------------------------------------------------------
 
+
 def run_phase_2(state: ProjectState) -> dict:
     """
     Phase 2 runner. Registered with PipelineOrchestrator.
@@ -50,9 +52,7 @@ def run_phase_2(state: ProjectState) -> dict:
     # by the ValidationAgent (segment-id check). Load it once up front.
     transcription_key = StorageKey.transcription(project_id)
     logger.info(f"[Phase 2] Loading transcription: {transcription_key}")
-    transcription = TranscriptionResult.from_json(
-        storage.download_json(transcription_key)
-    )
+    transcription = TranscriptionResult.from_json(storage.download_json(transcription_key))
 
     # 1. Idempotency: reuse cached plan if present, UNLESS the orchestrator
     # is retrying this phase — a retry implies the previous output failed
@@ -64,6 +64,7 @@ def run_phase_2(state: ProjectState) -> dict:
         plan = NarrativePlan.from_json(storage.download_json(plan_key))
         return _outputs(plan_key, plan, format_id, transcription)
     if is_retry and storage.exists(plan_key):
+        assert phase_state is not None  # is_retry implies non-None — narrow for mypy
         logger.info(
             f"[Phase 2] Retry attempt {phase_state.attempt} — ignoring cached "
             f"plan at {plan_key} and re-running LLM."
@@ -89,7 +90,7 @@ def run_phase_2(state: ProjectState) -> dict:
     # 4. LLM call.
     logger.info(f"[Phase 2] Calling LLM (model={LLM_MODEL_PLANNER})...")
     client = get_llm_client()
-    response = client.chat.completions.create(
+    response = client.chat.completions.create(  # type: ignore[call-overload]
         model=LLM_MODEL_PLANNER,
         messages=messages,
         response_format={"type": "json_object"},
@@ -97,9 +98,7 @@ def run_phase_2(state: ProjectState) -> dict:
     )
     plan_json_text = response.choices[0].message.content
     if not plan_json_text:
-        raise RuntimeError(
-            "LLM returned an empty response. Inspect OpenRouter logs."
-        )
+        raise RuntimeError("LLM returned an empty response. Inspect OpenRouter logs.")
 
     logger.info(f"[Phase 2] LLM responded with {len(plan_json_text)} chars")
 
@@ -121,6 +120,7 @@ def run_phase_2(state: ProjectState) -> dict:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _outputs(
     plan_key: str,
     plan: NarrativePlan,
@@ -135,8 +135,8 @@ def _outputs(
     """
     return {
         "plan_key": plan_key,
-        "plan": plan,                          # consumed by ValidationAgent
-        "transcription": transcription,        # consumed by ValidationAgent
+        "plan": plan,  # consumed by ValidationAgent
+        "transcription": transcription,  # consumed by ValidationAgent
         "block_count": len(plan.blocks),
         "total_segments_used": sum(len(b.segments) for b in plan.blocks),
         "format_id": format_id,
@@ -181,8 +181,7 @@ def _parse_plan(plan_text: str, project_id: str, plan_key: str) -> NarrativePlan
     blocks_data = plan_dict.get("blocks")
     if not isinstance(blocks_data, list) or not blocks_data:
         raise RuntimeError(
-            "LLM response missing or empty 'blocks' list. "
-            f"Got keys: {list(plan_dict.keys())}"
+            f"LLM response missing or empty 'blocks' list. Got keys: {list(plan_dict.keys())}"
         )
 
     try:
@@ -203,6 +202,7 @@ def _parse_plan(plan_text: str, project_id: str, plan_key: str) -> NarrativePlan
 # ---------------------------------------------------------------------------
 # Orchestrator registration
 # ---------------------------------------------------------------------------
+
 
 def register(orchestrator) -> None:
     """Register the Phase 2 runner with the orchestrator."""

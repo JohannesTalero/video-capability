@@ -1,4 +1,5 @@
 """Unit tests for pipeline.formats.load_format()."""
+
 from __future__ import annotations
 
 import pytest
@@ -28,8 +29,11 @@ def test_podcast_whitelist_contains_expected_tipos():
     fmt = load_format("podcast_hablando_con_profes")
     whitelist = set(fmt.materials_whitelist)
     expected = {
-        "lower_third", "pull_quote", "chapter_marker",
-        "animacion_texto", "transcript_fix",
+        "lower_third",
+        "pull_quote",
+        "chapter_marker",
+        "animacion_texto",
+        "transcript_fix",
     }
     assert whitelist == expected
 
