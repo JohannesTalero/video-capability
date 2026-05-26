@@ -1,0 +1,40 @@
+name: Deploy to Modal
+on:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Modal environment override"
+        required: false
+        type: choice
+        options: [staging, main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # No usa `needs:` entre workflows: branch protection garantiza que cualquier
+    # commit en `main`/`develop` ya pasó CI verde (no se permite push directo, solo merge tras PR).
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+    env:
+      MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+      MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+      MODAL_ENVIRONMENT: >-
+        ${{
+          inputs.environment != ''
+            && inputs.environment
+            || (github.ref == 'refs/heads/main' && 'main' || 'staging')
+        }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with: { enable-cache: true }
+      - run: uv sync --frozen
+      - name: Verify Modal token
+        run: uv run modal token verify
+      - name: Show target environment
+        run: echo "Deploying to Modal environment → $MODAL_ENVIRONMENT"
+      - name: Deploy (placeholder)
+        # TODO: reemplazar por `uv run modal deploy pipeline/modal_app.py`
+        # cuando exista el archivo de app Modal (Unit 7 — Render Final).
+        run: echo "Modal app file not yet present — verify only"

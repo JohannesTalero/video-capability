@@ -1,0 +1,9 @@
+{
+  "allowed": [
+    "lower_third",
+    "pull_quote",
+    "chapter_marker",
+    "animacion_texto",
+    "transcript_fix"
+  ]
+}

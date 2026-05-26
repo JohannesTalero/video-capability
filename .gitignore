@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# uv / venv
+.venv/
+
+# Entornos / secretos
+.env
+.env.local
+*.local
+
+# Modelos y artefactos del pipeline
+*.pt
+*.bin
+outputs/
+checkpoints/
+
+# Modal
+.modal/
+
+# Frontend futuro
+node_modules/
+.next/
+
+# Logs y debug
+*.log
+firebase-debug.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
