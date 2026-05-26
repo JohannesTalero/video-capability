@@ -1,5 +1,3 @@
-mkdir -p .github
-cat > .github/PULL_REQUEST_TEMPLATE.md << 'EOF'
 ## Descripcion
 <!-- Que hace este PR y por que es necesario -->
 
@@ -20,4 +18,3 @@ cat > .github/PULL_REQUEST_TEMPLATE.md << 'EOF'
 
 ## Contexto adicional
 <!-- Screenshots, links a issues, decisiones de diseno relevantes -->
-EOF
