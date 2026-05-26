@@ -4,12 +4,11 @@ These don't hit the network. The llm_coherence check is auto-passed when
 OPENROUTER_API_KEY isn't set in the test environment, but to be safe we
 focus the assertions on the rule-based checks.
 """
+
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import datetime, timezone
-
-import pytest
+from datetime import UTC, datetime
 
 from pipeline.models import (
     Block,
@@ -25,15 +24,16 @@ from pipeline.models import (
 )
 from pipeline.validator import ValidationAgent
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 def _transcription(n_segments: int = 50) -> TranscriptionResult:
     segs = [
-        TranscriptionSegment(id=i, start=i * 10.0, end=(i + 1) * 10.0,
-                             text=f"segmento {i}", confidence=0.9)
+        TranscriptionSegment(
+            id=i, start=i * 10.0, end=(i + 1) * 10.0, text=f"segmento {i}", confidence=0.9
+        )
         for i in range(n_segments)
     ]
     return TranscriptionResult(
@@ -48,7 +48,7 @@ def _transcription(n_segments: int = 50) -> TranscriptionResult:
 
 
 def _state() -> ProjectState:
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     project = Project(
         project_id="test-proj",
         title="Test",
@@ -76,8 +76,13 @@ def _cold_open(segments=(0, 1, 2)) -> Block:
     )
 
 
-def _block(idx: int, name: str, segments: list[int], materials: list[MaterialSpec] | None = None,
-           duration: str = "04:00") -> Block:
+def _block(
+    idx: int,
+    name: str,
+    segments: list[int],
+    materials: list[MaterialSpec] | None = None,
+    duration: str = "04:00",
+) -> Block:
     return Block(
         id=f"block_{idx}",
         name=name,
@@ -92,19 +97,43 @@ def _good_plan() -> NarrativePlan:
     """A clean plan that should pass all critical checks."""
     blocks = [
         _cold_open(),
-        _block(1, "Presentación", [3, 4], [
-            MaterialSpec("lower_third", "Edson — Docente", 5),
-        ], "01:00"),
-        _block(2, "Capítulo uno", [5, 6, 7, 8], [
-            MaterialSpec("chapter_marker", "Cap 1", 0),
-            MaterialSpec("pull_quote", "Una frase.", 30),
-        ], "06:00"),
-        _block(3, "Capítulo dos", [9, 10, 11, 12, 13], [
-            MaterialSpec("chapter_marker", "Cap 2", 0),
-        ], "07:00"),
-        _block(4, "Capítulo tres", [14, 15, 16, 17], [
-            MaterialSpec("chapter_marker", "Cap 3", 0),
-        ], "06:00"),
+        _block(
+            1,
+            "Presentación",
+            [3, 4],
+            [
+                MaterialSpec("lower_third", "Edson — Docente", 5),
+            ],
+            "01:00",
+        ),
+        _block(
+            2,
+            "Capítulo uno",
+            [5, 6, 7, 8],
+            [
+                MaterialSpec("chapter_marker", "Cap 1", 0),
+                MaterialSpec("pull_quote", "Una frase.", 30),
+            ],
+            "06:00",
+        ),
+        _block(
+            3,
+            "Capítulo dos",
+            [9, 10, 11, 12, 13],
+            [
+                MaterialSpec("chapter_marker", "Cap 2", 0),
+            ],
+            "07:00",
+        ),
+        _block(
+            4,
+            "Capítulo tres",
+            [14, 15, 16, 17],
+            [
+                MaterialSpec("chapter_marker", "Cap 3", 0),
+            ],
+            "06:00",
+        ),
         _block(5, "Cierre", [18, 19], duration="01:30"),
     ]
     return NarrativePlan(project_id="test-proj", blocks=blocks)
@@ -124,6 +153,7 @@ def _validate(plan: NarrativePlan, transcription: TranscriptionResult | None = N
 # Tests
 # ---------------------------------------------------------------------------
 
+
 def test_validates_clean_plan():
     plan = _good_plan()
     result = _validate(plan)
@@ -140,7 +170,7 @@ def test_no_blocks_critical():
 
 def test_orphan_segment_id_critical():
     plan = _good_plan()
-    plan.blocks[2].segments.append(9999)   # not in transcription
+    plan.blocks[2].segments.append(9999)  # not in transcription
     result = _validate(plan)
     assert not result.passed
     failures = " ".join(result.critical_failures).lower()
@@ -149,7 +179,7 @@ def test_orphan_segment_id_critical():
 
 def test_duplicate_segment_critical():
     plan = _good_plan()
-    plan.blocks[3].segments.append(5)   # 5 already in block_2
+    plan.blocks[3].segments.append(5)  # 5 already in block_2
     result = _validate(plan)
     assert not result.passed
     failures = " ".join(result.critical_failures).lower()
@@ -168,8 +198,8 @@ def test_cold_open_overlap_with_chapter_allowed():
 def test_triple_appearance_still_critical():
     """If a segment appears in cold open + 2 chapters, the 2nd chapter dup is critical."""
     plan = _good_plan()
-    plan.blocks[2].segments.append(1)   # cold open + chapter — allowed
-    plan.blocks[3].segments.append(1)   # second chapter — not allowed
+    plan.blocks[2].segments.append(1)  # cold open + chapter — allowed
+    plan.blocks[3].segments.append(1)  # second chapter — not allowed
     result = _validate(plan)
     assert not result.passed
     failures = " ".join(result.critical_failures).lower()
@@ -191,8 +221,7 @@ def test_pull_quote_excess_only_warning():
     plan = _good_plan()
     # Cram 15 pull quotes into one block
     plan.blocks[2].support_material = [
-        MaterialSpec("pull_quote", f"Quote {i}.", i)
-        for i in range(15)
+        MaterialSpec("pull_quote", f"Quote {i}.", i) for i in range(15)
     ]
     result = _validate(plan)
     # Should still pass critical-wise; pull_quote excess is just a warning.
@@ -201,9 +230,9 @@ def test_pull_quote_excess_only_warning():
 
 def test_cold_open_wrong_count_warning_only():
     plan = _good_plan()
-    plan.blocks[0] = replace(plan.blocks[0], segments=[0, 1])   # only 2
+    plan.blocks[0] = replace(plan.blocks[0], segments=[0, 1])  # only 2
     result = _validate(plan)
-    assert result.passed   # Cold open issues are warnings, not critical.
+    assert result.passed  # Cold open issues are warnings, not critical.
 
 
 def test_cold_open_wrong_name_warning_only():

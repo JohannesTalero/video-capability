@@ -16,6 +16,7 @@ Environment variables required (.env file):
     MODAL_TOKEN_ID=...    (optional — uses CPU if not set)
     MODAL_TOKEN_SECRET=...
 """
+
 import argparse
 import logging
 import sys
@@ -24,6 +25,7 @@ from pathlib import Path
 # Load .env if present
 try:
     from dotenv import load_dotenv
+
     load_dotenv()
 except ImportError:
     pass  # python-dotenv optional
@@ -40,8 +42,8 @@ logger = logging.getLogger("phymac.cli.phase1")
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from pipeline.orchestrator import PipelineOrchestrator
-from pipeline.storage import StorageAdapter
 from pipeline.phases.phase1_ingest import register as register_phase1
+from pipeline.storage import StorageAdapter
 
 
 def main():
@@ -64,8 +66,12 @@ Examples:
     parser.add_argument("--title", type=str, help="Project title (used to generate project ID)")
     parser.add_argument("--project-id", type=str, help="Existing project ID to resume/retry")
     parser.add_argument("--brand-id", type=str, default="phymac", help="Brand ID (default: phymac)")
-    parser.add_argument("--skip-validation", action="store_true", help="Skip ValidationAgent checks")
-    parser.add_argument("--dry-run", action="store_true", help="Check config and storage connection only")
+    parser.add_argument(
+        "--skip-validation", action="store_true", help="Skip ValidationAgent checks"
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Check config and storage connection only"
+    )
     args = parser.parse_args()
 
     if not args.video and not args.project_id:
@@ -130,7 +136,9 @@ Examples:
         print("═" * 60)
         print(f"  Transcription key: {phase1.outputs.get('transcription_key', 'N/A')}")
         print(f"  Segments:          {phase1.outputs.get('segment_count', 'N/A')}")
-        print(f"  Duration:          {float(phase1.outputs.get('duration_seconds', 0)) / 60:.1f} min")
+        print(
+            f"  Duration:          {float(phase1.outputs.get('duration_seconds', 0)) / 60:.1f} min"
+        )
         print(f"  Language:          {phase1.outputs.get('language', 'N/A')}")
         if validation:
             print(f"  Validation score:  {validation.score:.2f}")
@@ -144,7 +152,7 @@ Examples:
         print("\n❌ Phase 1 FAILED. Check logs above for details.")
         if phase1:
             print(f"  Error: {phase1.error_message}")
-            print(f"\n  To retry:")
+            print("\n  To retry:")
             print(f"  python scripts/run_phase1.py --project-id {project_id}")
         sys.exit(1)
 

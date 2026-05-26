@@ -14,6 +14,7 @@ Each format lives in `formats/<format_id>/` at the repo root and contains:
 
 Loaders are memoized so repeated load_format() calls are cheap.
 """
+
 from __future__ import annotations
 
 import json
@@ -42,7 +43,7 @@ class FormatConfig:
     version: str
     description: str
     narrative_prompt: str
-    materials_whitelist: tuple[str, ...]   # frozen for hashability
+    materials_whitelist: tuple[str, ...]  # frozen for hashability
 
 
 @lru_cache(maxsize=16)
@@ -57,9 +58,7 @@ def load_format(format_id: str) -> FormatConfig:
     """
     base = FORMATS_ROOT / format_id
     if not base.is_dir():
-        raise FormatNotFoundError(
-            f"Unknown format_id '{format_id}'. Expected folder: {base}"
-        )
+        raise FormatNotFoundError(f"Unknown format_id '{format_id}'. Expected folder: {base}")
 
     meta_path = base / "format.json"
     prompt_path = base / "narrative_prompt.md"
@@ -67,17 +66,13 @@ def load_format(format_id: str) -> FormatConfig:
 
     for p in (meta_path, prompt_path, whitelist_path):
         if not p.is_file():
-            raise FormatConfigError(
-                f"Format '{format_id}' is missing required file: {p.name}"
-            )
+            raise FormatConfigError(f"Format '{format_id}' is missing required file: {p.name}")
 
     try:
         meta = json.loads(meta_path.read_text(encoding="utf-8"))
         whitelist_data = json.loads(whitelist_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as e:
-        raise FormatConfigError(
-            f"Format '{format_id}' has invalid JSON: {e}"
-        ) from e
+        raise FormatConfigError(f"Format '{format_id}' has invalid JSON: {e}") from e
 
     prompt = prompt_path.read_text(encoding="utf-8")
 
@@ -90,9 +85,7 @@ def load_format(format_id: str) -> FormatConfig:
 
     for required in ("format_id", "name", "version", "description"):
         if required not in meta:
-            raise FormatConfigError(
-                f"Format '{format_id}' format.json missing field: {required}"
-            )
+            raise FormatConfigError(f"Format '{format_id}' format.json missing field: {required}")
 
     if meta["format_id"] != format_id:
         raise FormatConfigError(
