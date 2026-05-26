@@ -1,0 +1,47 @@
+name: Backport main to develop
+
+on:
+  push:
+      branches: [main]
+
+      jobs:
+        backport:
+            runs-on: ubuntu-latest
+                permissions:
+                      contents: write
+                            pull-requests: write
+
+                                steps:
+                                      - uses: actions/checkout@v4
+                                              with:
+                                                        fetch-depth: 0
+                                                                  token: ${{ secrets.GITHUB_TOKEN }}
+
+                                                                        - name: Create backport branch and open PR
+                                                                                env:
+                                                                                          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                                                                                                  run: |
+                                                                                                            SHORT="${{ github.sha }}"
+                                                                                                                      SHORT="${SHORT:0:7}"
+                                                                                                                                BRANCH="backport/main-to-develop-${SHORT}"
+                                                                                                                                          git config user.name  "github-actions[bot]"
+                                                                                                                                                    git config user.email "github-actions[bot]@users.noreply.github.com"
+                                                                                                                                                              git fetch origin develop
+                                                                                                                                                                        git checkout -b "$BRANCH" origin/develop
+                                                                                                                                                                                  git merge --no-ff origin/main \
+                                                                                                                                                                                              -m "chore: backport main -> develop ($(date +%Y-%m-%d))" \
+                                                                                                                                                                                                          || true
+                                                                                                                                                                                                                    git push origin "$BRANCH"
+                                                                                                                                                                                                                              gh pr create \
+                                                                                                                                                                                                                                          --base develop \
+                                                                                                                                                                                                                                                      --head "$BRANCH" \
+                                                                                                                                                                                                                                                                  --title "chore: backport main -> develop ($SHORT)" \
+                                                                                                                                                                                                                                                                              --body "## Backport automatico
+                                                                                                                                                                                                                                                                              
+                                                                                                                                                                                                                                                                                        Sincroniza develop con los commits que llegaron a main (releases, hotfixes).
+                                                                                                                                                                                                                                                                                        
+                                                                                                                                                                                                                                                                                                  **Commit:** ${{ github.sha }}
+                                                                                                                                                                                                                                                                                                            **Mensaje:** ${{ github.event.head_commit.message }}
+                                                                                                                                                                                                                                                                                                            
+                                                                                                                                                                                                                                                                                                                      > Generado por el workflow backport.yml. Revisar conflictos antes de mergear." \
+                                                                                                                                                                                                                                                                                                                                  || echo "PR already exists or no diff, skipping"
