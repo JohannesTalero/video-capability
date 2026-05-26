@@ -14,8 +14,9 @@ dependencies = [
     "modal>=0.63.0",
     "pydub>=0.25.1",
     "python-dotenv>=1.0.0",
-    "fastapi>=0.111.0",
-    "uvicorn>=0.30.0",
+    # fastapi + uvicorn se reinstalan cuando arranque Unit 8 (frontend/API).
+    # Hoy no se importan en ningún archivo y traen un advisory MAL-2026-4750
+    # sin fix upstream.
 ]
 
 [dependency-groups]
