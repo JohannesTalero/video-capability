@@ -17,6 +17,7 @@ Environment variables required (.env file):
     OPENROUTER_API_KEY=...
     LLM_MODEL_PLANNER=...      (optional — defaults to free Gemini Flash)
 """
+
 import argparse
 import logging
 import sys
@@ -24,6 +25,7 @@ from pathlib import Path
 
 try:
     from dotenv import load_dotenv
+
     load_dotenv()
 except ImportError:
     pass
@@ -38,8 +40,8 @@ logger = logging.getLogger("phymac.cli.phase2")
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from pipeline.orchestrator import PipelineOrchestrator
-from pipeline.storage import StorageAdapter
 from pipeline.phases.phase2_narrative import register as register_phase2
+from pipeline.storage import StorageAdapter
 
 
 def main():
@@ -55,10 +57,12 @@ Examples:
   python scripts/run_phase2.py --project-id cudris-20260526 --skip-validation
         """,
     )
-    parser.add_argument("--project-id", type=str, required=True,
-                        help="Project ID that has Phase 1 completed")
-    parser.add_argument("--skip-validation", action="store_true",
-                        help="Skip ValidationAgent checks")
+    parser.add_argument(
+        "--project-id", type=str, required=True, help="Project ID that has Phase 1 completed"
+    )
+    parser.add_argument(
+        "--skip-validation", action="store_true", help="Skip ValidationAgent checks"
+    )
     args = parser.parse_args()
 
     logger.info("Initializing storage adapter...")
@@ -103,7 +107,7 @@ Examples:
         print("\n❌ Phase 2 FAILED. Check logs above for details.")
         if phase2:
             print(f"  Error: {phase2.error_message}")
-            print(f"\n  To retry:")
+            print("\n  To retry:")
             print(f"  python scripts/run_phase2.py --project-id {project_id}")
         sys.exit(1)
 

@@ -14,6 +14,7 @@ Models per use case are read from pipeline.config:
 Defaults are FREE models suitable for the early testing phase. Set the env
 vars to paid model IDs (e.g. "anthropic/claude-sonnet-4.5") for production.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -22,8 +23,8 @@ from openai import OpenAI
 
 from pipeline.config import (
     OPENROUTER_API_KEY,
-    OPENROUTER_BASE_URL,
     OPENROUTER_APP_NAME,
+    OPENROUTER_BASE_URL,
     OPENROUTER_SITE_URL,
 )
 

@@ -8,12 +8,13 @@ Responsibilities:
 - Pause and notify user on persistent failures
 - Load checkpoints to resume interrupted runs
 """
+
 from __future__ import annotations
 
 import logging
-import os
 import re
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 
 from pipeline.config import DEFAULT_BRAND_ID, DEFAULT_FORMAT_ID, MAX_PHASE_RETRIES
@@ -71,9 +72,9 @@ class PipelineOrchestrator:
     def __init__(self, storage: StorageAdapter, validator: ValidationAgent | None = None):
         self.storage = storage
         self.validator = validator or ValidationAgent()
-        self._phase_runners: dict[int, callable] = {}   # populated by phase modules via register()
+        self._phase_runners: dict[int, Callable[[ProjectState], dict]] = {}
 
-    def register_phase(self, phase_num: int, runner: callable) -> None:
+    def register_phase(self, phase_num: int, runner: Callable[[ProjectState], dict]) -> None:
         """
         Register a phase runner function.
         Called by each phase module (phase1_ingest.py, etc.) at import time.
@@ -200,7 +201,9 @@ class PipelineOrchestrator:
         """
         state = self.load_checkpoint(project_id)
         if state.project.status not in (ProjectStatus.PAUSED, ProjectStatus.RUNNING):
-            logger.warning(f"Project {project_id} is not paused (status={state.project.status}). Nothing to resume.")
+            logger.warning(
+                f"Project {project_id} is not paused (status={state.project.status}). Nothing to resume."
+            )
             return state
 
         # Find the failed phase
@@ -260,8 +263,12 @@ class PipelineOrchestrator:
 
             # Validation
             if skip_validation:
-                validation = ValidationResult(passed=True, phase=phase_num, score=1.0,
-                                              recommendation="Validation skipped by user (--skip-validation)")
+                validation = ValidationResult(
+                    passed=True,
+                    phase=phase_num,
+                    score=1.0,
+                    recommendation="Validation skipped by user (--skip-validation)",
+                )
             else:
                 validation = self.validator.validate(phase_num, output, self._build_context(state))
 
@@ -271,7 +278,8 @@ class PipelineOrchestrator:
                 phase_state.status = PhaseStatus.COMPLETED
                 phase_state.completed_at = self._now()
                 phase_state.outputs = {
-                    k: v for k, v in output.items()
+                    k: v
+                    for k, v in output.items()
                     if isinstance(v, (str, int, float, bool)) or v is None
                 }
                 self._save_checkpoint(state)
@@ -281,13 +289,20 @@ class PipelineOrchestrator:
                         logger.warning(f"    ⚠ {w}")
                 return True
             else:
-                logger.warning(f"  Phase {phase_num} validation failed: {validation.critical_failures}")
+                logger.warning(
+                    f"  Phase {phase_num} validation failed: {validation.critical_failures}"
+                )
                 if attempt < max_attempts:
                     logger.info(f"  Retrying Phase {phase_num}...")
                     continue
                 else:
-                    self._pause_project(state, phase_num, phase_state, str(validation.critical_failures),
-                                        validation=validation)
+                    self._pause_project(
+                        state,
+                        phase_num,
+                        phase_state,
+                        str(validation.critical_failures),
+                        validation=validation,
+                    )
                     return False
 
         return False  # should not reach here
@@ -368,11 +383,11 @@ class PipelineOrchestrator:
         try:
             json_str = self.storage.download_json(key)
             return ProjectState.from_json(json_str)
-        except StorageKeyNotFoundError:
+        except StorageKeyNotFoundError as e:
             raise ProjectNotFoundError(
                 f"Project '{project_id}' not found in storage. "
                 f"Create it first with orchestrator.create_project()."
-            )
+            ) from e
 
     # ------------------------------------------------------------------
     # Helpers
@@ -410,4 +425,4 @@ class PipelineOrchestrator:
 
     @staticmethod
     def _now() -> str:
-        return datetime.now(timezone.utc).isoformat()
+        return datetime.now(UTC).isoformat()
