@@ -31,7 +31,11 @@ jobs:
         with: { enable-cache: true }
       - run: uv sync --frozen
       - name: Verify Modal token
-        run: uv run modal token verify
+        # `modal token info` reads MODAL_TOKEN_ID / MODAL_TOKEN_SECRET from env
+        # and exits non-zero if the credentials are missing or invalid.
+        # (`modal token verify` does not exist; the legacy subcommands are
+        # `set`, `new`, `info`.)
+        run: uv run modal token info
       - name: Show target environment
         run: echo "Deploying to Modal environment → $MODAL_ENVIRONMENT"
       - name: Deploy (placeholder)
