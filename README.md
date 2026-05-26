@@ -75,7 +75,7 @@ Tags `vX.Y.Z` en `main` disparan release de GitHub + imagen Docker tageada.
 
 - **CI** (`.github/workflows/ci.yml`): lint, format, typecheck, test (Py 3.11 + 3.12), security audit en cada PR/push a `main`/`develop`/`release/*`/`hotfix/*`.
 - **Deploy Modal** (`deploy-modal.yml`): push a `develop` → environment `staging`; push a `main` → environment `main`.
-- **Docker** (`docker.yml`): publica imagen multi-stage en GHCR (`ghcr.io/johannes-talero/video-capability`).
+- **Docker** (`docker.yml`): publica imagen multi-stage en GHCR (`ghcr.io/johannestalero/video-capability` — GHCR fuerza lowercase).
 - **Release** (`release.yml`): tag `v*` → GitHub Release con notas auto-generadas.
 
 ## Licencia
