@@ -55,3 +55,22 @@ asyncio_mode = "auto"
 
 [tool.bandit]
 exclude_dirs = ["tests", ".venv"]
+# Skips with justification:
+#   B101 — `assert` used. We use asserts purely as mypy type-narrowing hints
+#          (`assert plan is not None`). They're not relied on for correctness
+#          checks, so being stripped under `python -O` is acceptable.
+#   B108 — `/tmp/phymac` default temp dir. Overridable via PHYMAC_TMP_DIR.
+#          Acceptable for a single-user pipeline.
+#   B110 — `try / except / pass` in Phase 1 cleanup helper. Best-effort
+#          deletion of large temp files; silencing errors is intentional.
+#   B310 — `urllib.request.urlopen` in Phase 6 download-URL check. The URL
+#          comes from internal storage metadata, not user input.
+#   B404 — `import subprocess`. Required to call ffmpeg/ffprobe from Phase 1
+#          and the validator (no Python alternative for video probing).
+#   B603 — `subprocess.run(cmd)` without `shell=True`. We always pass an
+#          argument LIST (not a shell string), which IS the safe pattern.
+#          B603 fires on the import regardless.
+#   B607 — Partial executable path (`"ffmpeg"`/`"ffprobe"`). Resolved via PATH,
+#          which is controlled on CI (ubuntu-latest, plus apt-installed tools
+#          in the Dockerfile). Switching to full paths would break local dev.
+skips = ["B101", "B108", "B110", "B310", "B404", "B603", "B607"]
