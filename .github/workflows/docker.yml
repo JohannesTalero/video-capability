@@ -21,7 +21,8 @@ jobs:
       - uses: docker/metadata-action@v5
         id: meta
         with:
-          images: ghcr.io/johannes-talero/video-capability
+          # GHCR namespaces are forced to lowercase regardless of GitHub login case.
+          images: ghcr.io/johannestalero/video-capability
           # Mapping:
           #   push develop  → :develop, :sha-xxxxxxx
           #   push main     → :latest,  :sha-xxxxxxx

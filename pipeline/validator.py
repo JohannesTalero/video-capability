@@ -7,6 +7,7 @@ Behavior:
 - Returns ValidationResult with passed/failed, score, and recommendations.
 - The orchestrator handles retry logic (max 3 attempts before PAUSED).
 """
+
 from __future__ import annotations
 
 import json
@@ -97,65 +98,84 @@ class ValidationAgent:
 
         # Check 1: Segments exist
         has_segments = transcription is not None and len(transcription.segments) > 0
-        checks.append(CheckResult(
-            name="has_segments",
-            passed=has_segments,
-            value=len(transcription.segments) if transcription else 0,
-            threshold=">= 1",
-            message="Transcription has at least one segment" if has_segments
-                    else "CRITICAL: No segments found in transcription",
-        ))
+        checks.append(
+            CheckResult(
+                name="has_segments",
+                passed=has_segments,
+                value=len(transcription.segments) if transcription else 0,
+                threshold=">= 1",
+                message="Transcription has at least one segment"
+                if has_segments
+                else "CRITICAL: No segments found in transcription",
+            )
+        )
 
         if not has_segments:
             return self._build_result(phase=1, checks=checks, critical_names=["has_segments"])
 
+        assert transcription is not None  # has_segments True → transcription non-None
+
         # Check 2: Coverage — total transcribed time / audio duration
-        total_transcribed = sum(
-            s.end - s.start for s in transcription.segments
+        total_transcribed = sum(s.end - s.start for s in transcription.segments)
+        coverage = (
+            total_transcribed / transcription.duration_seconds
+            if transcription.duration_seconds > 0
+            else 0
         )
-        coverage = total_transcribed / transcription.duration_seconds if transcription.duration_seconds > 0 else 0
-        checks.append(CheckResult(
-            name="transcription_coverage",
-            passed=coverage >= 0.90,
-            value=round(coverage, 3),
-            threshold=">= 0.90",
-            message=f"Coverage {coverage:.1%}" if coverage >= 0.90
-                    else f"CRITICAL: Low coverage {coverage:.1%} (< 90% of audio transcribed)",
-        ))
+        checks.append(
+            CheckResult(
+                name="transcription_coverage",
+                passed=coverage >= 0.90,
+                value=round(coverage, 3),
+                threshold=">= 0.90",
+                message=f"Coverage {coverage:.1%}"
+                if coverage >= 0.90
+                else f"CRITICAL: Low coverage {coverage:.1%} (< 90% of audio transcribed)",
+            )
+        )
 
         # Check 3: Average confidence
         avg_conf = sum(s.confidence for s in transcription.segments) / len(transcription.segments)
-        checks.append(CheckResult(
-            name="avg_confidence",
-            passed=avg_conf >= 0.70,
-            value=round(avg_conf, 3),
-            threshold=">= 0.70",
-            message=f"Average Whisper confidence {avg_conf:.2f}" if avg_conf >= 0.70
-                    else f"WARNING: Low confidence {avg_conf:.2f} — review transcription carefully",
-        ))
+        checks.append(
+            CheckResult(
+                name="avg_confidence",
+                passed=avg_conf >= 0.70,
+                value=round(avg_conf, 3),
+                threshold=">= 0.70",
+                message=f"Average Whisper confidence {avg_conf:.2f}"
+                if avg_conf >= 0.70
+                else f"WARNING: Low confidence {avg_conf:.2f} — review transcription carefully",
+            )
+        )
 
         # Check 4: Language detection
         lang_ok = transcription.language in ("es", "es-419", "es-MX", "es-CO")
-        checks.append(CheckResult(
-            name="language_detection",
-            passed=lang_ok,
-            value=transcription.language,
-            threshold="es or es-*",
-            message=f"Language detected: {transcription.language}" if lang_ok
-                    else f"WARNING: Unexpected language '{transcription.language}' — expected Spanish",
-        ))
+        checks.append(
+            CheckResult(
+                name="language_detection",
+                passed=lang_ok,
+                value=transcription.language,
+                threshold="es or es-*",
+                message=f"Language detected: {transcription.language}"
+                if lang_ok
+                else f"WARNING: Unexpected language '{transcription.language}' — expected Spanish",
+            )
+        )
 
         # Check 5: Empty segments ratio
         empty = [s for s in transcription.segments if len(s.text.strip()) < 3]
         empty_ratio = len(empty) / len(transcription.segments)
-        checks.append(CheckResult(
-            name="empty_segments_ratio",
-            passed=empty_ratio <= 0.05,
-            value=round(empty_ratio, 3),
-            threshold="<= 0.05",
-            message=f"Empty segments ratio {empty_ratio:.1%}" if empty_ratio <= 0.05
-                    else f"WARNING: {empty_ratio:.1%} of segments are nearly empty",
-        ))
+        checks.append(
+            CheckResult(
+                name="empty_segments_ratio",
+                passed=empty_ratio <= 0.05,
+                value=round(empty_ratio, 3),
+                threshold="<= 0.05",
+                message=f"Empty segments ratio {empty_ratio:.1%}"
+                if empty_ratio <= 0.05
+                else f"WARNING: {empty_ratio:.1%} of segments are nearly empty",
+            )
+        )
 
         return self._build_result(
             phase=1,
@@ -192,16 +212,21 @@ class ValidationAgent:
 
         # ---- Check 1 (critical): plan exists and has blocks ----
         has_blocks = plan is not None and len(plan.blocks) > 0
-        checks.append(CheckResult(
-            name="has_blocks",
-            passed=has_blocks,
-            value=len(plan.blocks) if plan else 0,
-            threshold=">= 1",
-            message=f"{len(plan.blocks)} blocks generated" if has_blocks
-                    else "CRITICAL: No blocks in narrative plan",
-        ))
+        checks.append(
+            CheckResult(
+                name="has_blocks",
+                passed=has_blocks,
+                value=len(plan.blocks) if plan is not None else 0,
+                threshold=">= 1",
+                message=f"{len(plan.blocks)} blocks generated"
+                if plan is not None and has_blocks
+                else "CRITICAL: No blocks in narrative plan",
+            )
+        )
         if not has_blocks:
             return self._build_result(phase=2, checks=checks, critical_names=["has_blocks"])
+
+        assert plan is not None  # has_blocks True → plan is non-None — narrow for mypy
 
         # Format config (used by whitelist check) — best-effort.
         whitelist: set[str] = set()
@@ -264,17 +289,17 @@ class ValidationAgent:
                 message="No transcription supplied to validator — skipping segment id check.",
             )
         valid_ids = {s.id for s in transcription.segments}
-        orphans = [
-            sid for block in plan.blocks for sid in block.segments
-            if sid not in valid_ids
-        ]
+        orphans = [sid for block in plan.blocks for sid in block.segments if sid not in valid_ids]
         return CheckResult(
             name="segment_ids_valid",
             passed=not orphans,
             value=orphans,
             threshold="[]",
-            message=("All segment IDs are valid" if not orphans
-                     else f"CRITICAL: Orphan segment IDs (not in transcription): {orphans}"),
+            message=(
+                "All segment IDs are valid"
+                if not orphans
+                else f"CRITICAL: Orphan segment IDs (not in transcription): {orphans}"
+            ),
         )
 
     @staticmethod
@@ -304,8 +329,7 @@ class ValidationAgent:
                     prev_block_id = seen[sid]
                     # Allowed overlap: one occurrence must be in the cold open.
                     overlap_with_cold_open = (
-                        prev_block_id == cold_open_block_id
-                        or block.id == cold_open_block_id
+                        prev_block_id == cold_open_block_id or block.id == cold_open_block_id
                     )
                     if overlap_with_cold_open and sid in cold_open_segments:
                         # Replace mapping to the non-cold-open block so a
@@ -321,9 +345,11 @@ class ValidationAgent:
             passed=not duplicates,
             value=duplicates,
             threshold="[]",
-            message=("No invalid duplicate segments "
-                     "(cold-open ↔ chapter overlap allowed)" if not duplicates
-                     else f"CRITICAL: Duplicate segment IDs outside cold-open: {duplicates}"),
+            message=(
+                "No invalid duplicate segments (cold-open ↔ chapter overlap allowed)"
+                if not duplicates
+                else f"CRITICAL: Duplicate segment IDs outside cold-open: {duplicates}"
+            ),
         )
 
     @staticmethod
@@ -340,7 +366,9 @@ class ValidationAgent:
                 message="No whitelist available (format not loaded) — skipping check.",
             )
         invalid = [
-            m.tipo for block in plan.blocks for m in block.support_material
+            m.tipo
+            for block in plan.blocks
+            for m in block.support_material
             if m.tipo not in whitelist
         ]
         return CheckResult(
@@ -348,15 +376,17 @@ class ValidationAgent:
             passed=not invalid,
             value=invalid,
             threshold=sorted(whitelist),
-            message=("All material tipos in whitelist" if not invalid
-                     else f"CRITICAL: Unknown material tipos: {invalid}"),
+            message=(
+                "All material tipos in whitelist"
+                if not invalid
+                else f"CRITICAL: Unknown material tipos: {invalid}"
+            ),
         )
 
     @staticmethod
     def _check_pull_quote_count(plan: NarrativePlan, max_count: int) -> CheckResult:
         count = sum(
-            1 for block in plan.blocks for m in block.support_material
-            if m.tipo == "pull_quote"
+            1 for block in plan.blocks for m in block.support_material if m.tipo == "pull_quote"
         )
         passed = count <= max_count
         return CheckResult(
@@ -364,15 +394,17 @@ class ValidationAgent:
             passed=passed,
             value=count,
             threshold=f"<= {max_count}",
-            message=(f"{count} pull_quotes (within limit)" if passed
-                     else f"WARNING: {count} pull_quotes exceeds soft cap of {max_count}"),
+            message=(
+                f"{count} pull_quotes (within limit)"
+                if passed
+                else f"WARNING: {count} pull_quotes exceeds soft cap of {max_count}"
+            ),
         )
 
     @staticmethod
     def _check_lower_third_count(plan: NarrativePlan, max_count: int) -> CheckResult:
         count = sum(
-            1 for block in plan.blocks for m in block.support_material
-            if m.tipo == "lower_third"
+            1 for block in plan.blocks for m in block.support_material if m.tipo == "lower_third"
         )
         passed = count <= max_count
         return CheckResult(
@@ -380,13 +412,18 @@ class ValidationAgent:
             passed=passed,
             value=count,
             threshold=f"<= {max_count}",
-            message=(f"{count} lower_thirds (within limit)" if passed
-                     else f"WARNING: {count} lower_thirds exceeds cap of {max_count}"),
+            message=(
+                f"{count} lower_thirds (within limit)"
+                if passed
+                else f"WARNING: {count} lower_thirds exceeds cap of {max_count}"
+            ),
         )
 
     @staticmethod
     def _check_duration_in_range(
-        plan: NarrativePlan, low_sec: int, high_sec: int,
+        plan: NarrativePlan,
+        low_sec: int,
+        high_sec: int,
     ) -> CheckResult:
         """Parse MM:SS from each block.estimated_duration and sum."""
         total = 0
@@ -408,11 +445,13 @@ class ValidationAgent:
             passed=passed,
             value=f"{total // 60}:{total % 60:02d}",
             threshold=f"{low_sec // 60}-{high_sec // 60} min",
-            message=(f"Estimated duration {total // 60}:{total % 60:02d} in target range"
-                     if passed
-                     else f"WARNING: Estimated total duration "
-                          f"{total // 60}:{total % 60:02d} outside "
-                          f"{low_sec // 60}-{high_sec // 60} min target"),
+            message=(
+                f"Estimated duration {total // 60}:{total % 60:02d} in target range"
+                if passed
+                else f"WARNING: Estimated total duration "
+                f"{total // 60}:{total % 60:02d} outside "
+                f"{low_sec // 60}-{high_sec // 60} min target"
+            ),
         )
 
     @staticmethod
@@ -435,8 +474,11 @@ class ValidationAgent:
             passed=passed,
             value=details,
             threshold='name="Cold open", segments=3',
-            message=("Cold open structure OK" if passed
-                     else f"WARNING: Cold open expected name=\"Cold open\" with 3 segments; got {details}"),
+            message=(
+                "Cold open structure OK"
+                if passed
+                else f'WARNING: Cold open expected name="Cold open" with 3 segments; got {details}'
+            ),
         )
 
     def _claude_coherence_check(
@@ -458,7 +500,9 @@ class ValidationAgent:
             client = get_llm_client()
 
             sample_text = transcription.full_text[:2000] if transcription else "(no transcription)"
-            blocks_summary = [{"id": b.id, "name": b.name, "segments": b.segments} for b in plan.blocks]
+            blocks_summary = [
+                {"id": b.id, "name": b.name, "segments": b.segments} for b in plan.blocks
+            ]
 
             prompt = f"""You are validating a narrative plan for an educational video in Spanish.
 
@@ -481,7 +525,8 @@ Respond ONLY with valid JSON:
                 response_format={"type": "json_object"},
                 messages=[{"role": "user", "content": prompt}],
             )
-            result = json.loads(response.choices[0].message.content)
+            content = response.choices[0].message.content or "{}"
+            result = json.loads(content)
             coherent = result.get("coherent", False)
             issues = result.get("issues", [])
 
@@ -491,14 +536,14 @@ Respond ONLY with valid JSON:
                 value=result,
                 threshold="coherent=true",
                 message=f"LLM: plan is coherent (confidence {result.get('confidence', 0):.2f})"
-                        if coherent
-                        else f"WARNING: LLM found issues: {issues}",
+                if coherent
+                else f"WARNING: LLM found issues: {issues}",
             )
         except Exception as e:
             logger.warning(f"LLM coherence check failed: {e}")
             return CheckResult(
                 name="llm_coherence",
-                passed=True,   # don't block on LLM errors
+                passed=True,  # don't block on LLM errors
                 value="error",
                 threshold="coherent=true",
                 message=f"LLM coherence check skipped due to error: {e}",
@@ -524,49 +569,62 @@ Respond ONLY with valid JSON:
         # Check 1: Count matches plan
         planned_count = sum(len(b.support_material) for b in plan.blocks) if plan else 0
         count_ok = len(materials) >= planned_count
-        checks.append(CheckResult(
-            name="materials_count",
-            passed=count_ok,
-            value=len(materials),
-            threshold=f">= {planned_count}",
-            message=f"{len(materials)}/{planned_count} materials generated" if count_ok
-                    else f"CRITICAL: Only {len(materials)}/{planned_count} materials generated",
-        ))
+        checks.append(
+            CheckResult(
+                name="materials_count",
+                passed=count_ok,
+                value=len(materials),
+                threshold=f">= {planned_count}",
+                message=f"{len(materials)}/{planned_count} materials generated"
+                if count_ok
+                else f"CRITICAL: Only {len(materials)}/{planned_count} materials generated",
+            )
+        )
 
         # Per-material checks
         for i, mat in enumerate(materials):
-            local_path = mat.get("local_path") or context.get("local_paths", {}).get(mat.get("storage_key", ""))
+            local_path = mat.get("local_path") or context.get("local_paths", {}).get(
+                mat.get("storage_key", "")
+            )
             if not local_path or not Path(local_path).exists():
-                checks.append(CheckResult(
-                    name=f"material_{i}_exists",
-                    passed=False,
-                    value="missing",
-                    threshold="file exists",
-                    message=f"CRITICAL: Material {i} file not found locally for validation",
-                ))
+                checks.append(
+                    CheckResult(
+                        name=f"material_{i}_exists",
+                        passed=False,
+                        value="missing",
+                        threshold="file exists",
+                        message=f"CRITICAL: Material {i} file not found locally for validation",
+                    )
+                )
                 continue
 
             # ffprobe check
             probe = self._ffprobe(local_path)
-            checks.append(CheckResult(
-                name=f"material_{i}_valid",
-                passed=probe["valid"],
-                value=probe,
-                threshold="ffprobe exit 0",
-                message=f"Material {i} is valid MP4" if probe["valid"]
-                        else f"CRITICAL: Material {i} is corrupted: {probe.get('error')}",
-            ))
+            checks.append(
+                CheckResult(
+                    name=f"material_{i}_valid",
+                    passed=probe["valid"],
+                    value=probe,
+                    threshold="ffprobe exit 0",
+                    message=f"Material {i} is valid MP4"
+                    if probe["valid"]
+                    else f"CRITICAL: Material {i} is corrupted: {probe.get('error')}",
+                )
+            )
 
             # Duration check
             duration = probe.get("duration", 0)
-            checks.append(CheckResult(
-                name=f"material_{i}_duration",
-                passed=duration >= 0.5,
-                value=round(duration, 2),
-                threshold=">= 0.5s",
-                message=f"Material {i} duration {duration:.2f}s" if duration >= 0.5
-                        else f"WARNING: Material {i} is very short ({duration:.2f}s)",
-            ))
+            checks.append(
+                CheckResult(
+                    name=f"material_{i}_duration",
+                    passed=duration >= 0.5,
+                    value=round(duration, 2),
+                    threshold=">= 0.5s",
+                    message=f"Material {i} duration {duration:.2f}s"
+                    if duration >= 0.5
+                    else f"WARNING: Material {i} is very short ({duration:.2f}s)",
+                )
+            )
 
             # Claude Vision check (sample frame)
             vision_check = self._claude_vision_material_check(local_path, i, mat)
@@ -600,31 +658,43 @@ Respond ONLY with valid JSON:
             midpoint = duration / 2
 
             subprocess.run(
-                ["ffmpeg", "-ss", str(midpoint), "-i", video_path,
-                 "-vframes", "1", "-y", frame_path],
-                capture_output=True, check=True,
+                [
+                    "ffmpeg",
+                    "-ss",
+                    str(midpoint),
+                    "-i",
+                    video_path,
+                    "-vframes",
+                    "1",
+                    "-y",
+                    frame_path,
+                ],
+                capture_output=True,
+                check=True,
             )
 
             with open(frame_path, "rb") as f:
                 img_b64 = base64.standard_b64encode(f.read()).decode("utf-8")
 
             client = get_llm_client()
-            response = client.chat.completions.create(
+            response = client.chat.completions.create(  # type: ignore[call-overload]
                 model=LLM_MODEL_VISION,
                 max_tokens=256,
                 response_format={"type": "json_object"},
-                messages=[{
-                    "role": "user",
-                    "content": [
-                        build_image_content(img_b64, media_type="image/png"),
-                        {
-                            "type": "text",
-                            "text": f"""This is a frame from an educational support material (type: {mat.get('tipo', 'unknown')}).
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            build_image_content(img_b64, media_type="image/png"),
+                            {
+                                "type": "text",
+                                "text": f"""This is a frame from an educational support material (type: {mat.get("tipo", "unknown")}).
 Is the content clearly visible and readable? Are there any obvious rendering errors?
 Respond ONLY with JSON: {{"readable": true/false, "issues": ["issue1"]}}""",
-                        },
-                    ],
-                }],
+                            },
+                        ],
+                    }
+                ],
             )
             result = json.loads(response.choices[0].message.content)
             readable = result.get("readable", False)
@@ -635,8 +705,9 @@ Respond ONLY with JSON: {{"readable": true/false, "issues": ["issue1"]}}""",
                 passed=readable,
                 value=result,
                 threshold="readable=true",
-                message=f"Material {idx} is visually readable" if readable
-                        else f"WARNING: Material {idx} may have render issues: {issues}",
+                message=f"Material {idx} is visually readable"
+                if readable
+                else f"WARNING: Material {idx} may have render issues: {issues}",
             )
         except Exception as e:
             logger.warning(f"Vision check for material {idx} failed: {e}")
@@ -657,39 +728,52 @@ Respond ONLY with JSON: {{"readable": true/false, "issues": ["issue1"]}}""",
         video_path = output.get("video_path", "")
 
         probe = self._ffprobe(video_path)
-        checks.append(CheckResult(
-            name="composed_video_valid",
-            passed=probe["valid"],
-            value=probe,
-            threshold="ffprobe exit 0",
-            message="Composed video is valid" if probe["valid"]
-                    else f"CRITICAL: Composed video corrupted: {probe.get('error')}",
-        ))
+        checks.append(
+            CheckResult(
+                name="composed_video_valid",
+                passed=probe["valid"],
+                value=probe,
+                threshold="ffprobe exit 0",
+                message="Composed video is valid"
+                if probe["valid"]
+                else f"CRITICAL: Composed video corrupted: {probe.get('error')}",
+            )
+        )
 
         has_audio = probe.get("has_audio", False)
-        checks.append(CheckResult(
-            name="has_audio_stream",
-            passed=has_audio,
-            value=has_audio,
-            threshold="True",
-            message="Audio stream present" if has_audio
-                    else "CRITICAL: No audio stream in composed video",
-        ))
+        checks.append(
+            CheckResult(
+                name="has_audio_stream",
+                passed=has_audio,
+                value=has_audio,
+                threshold="True",
+                message="Audio stream present"
+                if has_audio
+                else "CRITICAL: No audio stream in composed video",
+            )
+        )
 
         width = probe.get("width", 0)
-        checks.append(CheckResult(
-            name="resolution",
-            passed=width >= 1280,
-            value=f"{probe.get('width')}x{probe.get('height')}",
-            threshold=">= 1280px wide",
-            message=f"Resolution OK: {probe.get('width')}x{probe.get('height')}" if width >= 1280
-                    else f"WARNING: Low resolution {probe.get('width')}x{probe.get('height')}",
-        ))
+        checks.append(
+            CheckResult(
+                name="resolution",
+                passed=width >= 1280,
+                value=f"{probe.get('width')}x{probe.get('height')}",
+                threshold=">= 1280px wide",
+                message=f"Resolution OK: {probe.get('width')}x{probe.get('height')}"
+                if width >= 1280
+                else f"WARNING: Low resolution {probe.get('width')}x{probe.get('height')}",
+            )
+        )
 
         # Claude Vision: check 3 frames (start, middle, end)
         if probe["valid"] and video_path:
             duration = probe.get("duration", 0)
-            for label, ts in [("start", 1.0), ("middle", duration / 2), ("end", max(0, duration - 2))]:
+            for label, ts in [
+                ("start", 1.0),
+                ("middle", duration / 2),
+                ("end", max(0, duration - 2)),
+            ]:
                 vision = self._claude_vision_composition_check(video_path, ts, label)
                 checks.append(vision)
 
@@ -700,37 +784,58 @@ Respond ONLY with JSON: {{"readable": true/false, "issues": ["issue1"]}}""",
             warning_names=["resolution"],
         )
 
-    def _claude_vision_composition_check(self, video_path: str, timestamp: float, label: str) -> CheckResult:
+    def _claude_vision_composition_check(
+        self, video_path: str, timestamp: float, label: str
+    ) -> CheckResult:
         if not is_llm_available():
             return CheckResult(
                 name=f"vision_{label}",
-                passed=True, value="skipped", threshold="ok",
+                passed=True,
+                value="skipped",
+                threshold="ok",
                 message=f"Vision check at {label} skipped (OPENROUTER_API_KEY not set)",
             )
         try:
             import base64
+
             frame_path = f"/tmp/phymac_frame_{label}.png"
             subprocess.run(
-                ["ffmpeg", "-ss", str(timestamp), "-i", video_path, "-vframes", "1", "-y", frame_path],
-                capture_output=True, check=True,
+                [
+                    "ffmpeg",
+                    "-ss",
+                    str(timestamp),
+                    "-i",
+                    video_path,
+                    "-vframes",
+                    "1",
+                    "-y",
+                    frame_path,
+                ],
+                capture_output=True,
+                check=True,
             )
             with open(frame_path, "rb") as f:
                 img_b64 = base64.standard_b64encode(f.read()).decode("utf-8")
 
             client = get_llm_client()
-            response = client.chat.completions.create(
+            response = client.chat.completions.create(  # type: ignore[call-overload]
                 model=LLM_MODEL_VISION,
                 max_tokens=256,
                 response_format={"type": "json_object"},
-                messages=[{
-                    "role": "user",
-                    "content": [
-                        build_image_content(img_b64, media_type="image/png"),
-                        {"type": "text", "text": """This is a frame from a composed educational video.
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            build_image_content(img_b64, media_type="image/png"),
+                            {
+                                "type": "text",
+                                "text": """This is a frame from a composed educational video.
 Check: Is there visible branding? Is the layout correct? Are there visual artifacts or glitches?
-Respond ONLY with JSON: {"branding_visible": true/false, "layout_ok": true/false, "artifacts": []}"""},
-                    ],
-                }],
+Respond ONLY with JSON: {"branding_visible": true/false, "layout_ok": true/false, "artifacts": []}""",
+                            },
+                        ],
+                    }
+                ],
             )
             result = json.loads(response.choices[0].message.content)
             ok = result.get("layout_ok", True) and len(result.get("artifacts", [])) == 0
@@ -739,13 +844,16 @@ Respond ONLY with JSON: {"branding_visible": true/false, "layout_ok": true/false
                 passed=ok,
                 value=result,
                 threshold="layout_ok=true, no artifacts",
-                message=f"Frame '{label}' looks good" if ok
-                        else f"WARNING: Frame '{label}' issues: {result.get('artifacts')}",
+                message=f"Frame '{label}' looks good"
+                if ok
+                else f"WARNING: Frame '{label}' issues: {result.get('artifacts')}",
             )
         except Exception as e:
             return CheckResult(
                 name=f"vision_{label}",
-                passed=True, value="error", threshold="ok",
+                passed=True,
+                value="error",
+                threshold="ok",
                 message=f"Vision check '{label}' skipped: {e}",
             )
 
@@ -758,33 +866,43 @@ Respond ONLY with JSON: {"branding_visible": true/false, "layout_ok": true/false
         video_path = output.get("video_path", "")
 
         probe = self._ffprobe(video_path)
-        checks.append(CheckResult(
-            name="audio_processed_valid",
-            passed=probe["valid"],
-            value=probe,
-            threshold="ffprobe exit 0",
-            message="Audio-processed video is valid" if probe["valid"]
-                    else f"CRITICAL: File corrupted: {probe.get('error')}",
-        ))
+        checks.append(
+            CheckResult(
+                name="audio_processed_valid",
+                passed=probe["valid"],
+                value=probe,
+                threshold="ffprobe exit 0",
+                message="Audio-processed video is valid"
+                if probe["valid"]
+                else f"CRITICAL: File corrupted: {probe.get('error')}",
+            )
+        )
 
         # Volume check with ffmpeg loudnorm probe
         try:
             vol = self._measure_loudness(video_path)
             in_range = -20 <= vol <= -8
-            checks.append(CheckResult(
-                name="volume_range",
-                passed=in_range,
-                value=round(vol, 1),
-                threshold="-20 to -8 dBFS",
-                message=f"Volume {vol:.1f} dBFS" if in_range
-                        else f"WARNING: Volume {vol:.1f} dBFS is outside target range (-20 to -8 dBFS)",
-            ))
+            checks.append(
+                CheckResult(
+                    name="volume_range",
+                    passed=in_range,
+                    value=round(vol, 1),
+                    threshold="-20 to -8 dBFS",
+                    message=f"Volume {vol:.1f} dBFS"
+                    if in_range
+                    else f"WARNING: Volume {vol:.1f} dBFS is outside target range (-20 to -8 dBFS)",
+                )
+            )
         except Exception as e:
-            checks.append(CheckResult(
-                name="volume_range",
-                passed=True, value="skipped", threshold="-20 to -8 dBFS",
-                message=f"Volume check skipped: {e}",
-            ))
+            checks.append(
+                CheckResult(
+                    name="volume_range",
+                    passed=True,
+                    value="skipped",
+                    threshold="-20 to -8 dBFS",
+                    message=f"Volume check skipped: {e}",
+                )
+            )
 
         return self._build_result(
             phase=5,
@@ -797,7 +915,8 @@ Respond ONLY with JSON: {"branding_visible": true/false, "layout_ok": true/false
         """Use ffmpeg to measure integrated loudness (LUFS approximation)."""
         result = subprocess.run(
             ["ffmpeg", "-i", video_path, "-af", "volumedetect", "-f", "null", "-"],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         for line in result.stderr.splitlines():
             if "mean_volume" in line:
@@ -821,51 +940,68 @@ Respond ONLY with JSON: {"branding_visible": true/false, "layout_ok": true/false
             ("audio_codec", "aac", probe.get("audio_codec", "")),
         ]:
             ok = expected in (actual or "")
-            checks.append(CheckResult(
-                name=check_name, passed=ok,
-                value=actual, threshold=expected,
-                message=f"{check_name}: {actual}" if ok
-                        else f"WARNING: Expected {expected}, got {actual}",
-            ))
+            checks.append(
+                CheckResult(
+                    name=check_name,
+                    passed=ok,
+                    value=actual,
+                    threshold=expected,
+                    message=f"{check_name}: {actual}"
+                    if ok
+                    else f"WARNING: Expected {expected}, got {actual}",
+                )
+            )
 
         # Resolution
         width, height = probe.get("width", 0), probe.get("height", 0)
-        checks.append(CheckResult(
-            name="final_resolution",
-            passed=(width == 1920 and height == 1080),
-            value=f"{width}x{height}",
-            threshold="1920x1080",
-            message=f"Resolution: {width}x{height}" if width == 1920
-                    else f"WARNING: Resolution {width}x{height} (expected 1920x1080)",
-        ))
+        checks.append(
+            CheckResult(
+                name="final_resolution",
+                passed=(width == 1920 and height == 1080),
+                value=f"{width}x{height}",
+                threshold="1920x1080",
+                message=f"Resolution: {width}x{height}"
+                if width == 1920
+                else f"WARNING: Resolution {width}x{height} (expected 1920x1080)",
+            )
+        )
 
         # File size sanity check
-        size_mb = Path(video_path).stat().st_size / (1024 * 1024) if Path(video_path).exists() else 0
-        checks.append(CheckResult(
-            name="file_size",
-            passed=100 <= size_mb <= 8000,
-            value=round(size_mb, 1),
-            threshold="100–8000 MB",
-            message=f"File size: {size_mb:.0f} MB" if 100 <= size_mb <= 8000
-                    else f"WARNING: Unexpected file size {size_mb:.0f} MB",
-        ))
+        size_mb = (
+            Path(video_path).stat().st_size / (1024 * 1024) if Path(video_path).exists() else 0
+        )
+        checks.append(
+            CheckResult(
+                name="file_size",
+                passed=100 <= size_mb <= 8000,
+                value=round(size_mb, 1),
+                threshold="100–8000 MB",
+                message=f"File size: {size_mb:.0f} MB"
+                if 100 <= size_mb <= 8000
+                else f"WARNING: Unexpected file size {size_mb:.0f} MB",
+            )
+        )
 
         # Download URL reachable
         if download_url:
             try:
                 import urllib.request
+
                 with urllib.request.urlopen(download_url, timeout=5) as resp:
                     url_ok = resp.status == 200
             except Exception:
                 url_ok = False
-            checks.append(CheckResult(
-                name="download_url_reachable",
-                passed=url_ok,
-                value=download_url[:60] + "...",
-                threshold="HTTP 200",
-                message="Download URL is accessible" if url_ok
-                        else "WARNING: Download URL is not reachable",
-            ))
+            checks.append(
+                CheckResult(
+                    name="download_url_reachable",
+                    passed=url_ok,
+                    value=download_url[:60] + "...",
+                    threshold="HTTP 200",
+                    message="Download URL is accessible"
+                    if url_ok
+                    else "WARNING: Download URL is not reachable",
+                )
+            )
 
         return self._build_result(
             phase=6,
@@ -885,26 +1021,51 @@ Respond ONLY with JSON: {"branding_visible": true/false, "layout_ok": true/false
         try:
             result = subprocess.run(
                 [
-                    "ffprobe", "-v", "error",
-                    "-select_streams", "v:0",
-                    "-show_entries", "stream=width,height,codec_name,duration,pix_fmt",
-                    "-show_entries", "format=duration,size",
-                    "-of", "json", video_path,
+                    "ffprobe",
+                    "-v",
+                    "error",
+                    "-select_streams",
+                    "v:0",
+                    "-show_entries",
+                    "stream=width,height,codec_name,duration,pix_fmt",
+                    "-show_entries",
+                    "format=duration,size",
+                    "-of",
+                    "json",
+                    video_path,
                 ],
-                capture_output=True, text=True, timeout=30,
+                capture_output=True,
+                text=True,
+                timeout=30,
             )
             if result.returncode != 0:
                 return {"valid": False, "error": result.stderr}
 
             data = json.loads(result.stdout)
-            video_stream = next(
-                (s for s in data.get("streams", []) if s.get("codec_type") == "video"
-                 or s.get("width")), {}
+            video_stream: dict = next(
+                (
+                    s
+                    for s in data.get("streams", [])
+                    if s.get("codec_type") == "video" or s.get("width")
+                ),
+                {},
             )
             audio_result = subprocess.run(
-                ["ffprobe", "-v", "error", "-select_streams", "a:0",
-                 "-show_entries", "stream=codec_name", "-of", "json", video_path],
-                capture_output=True, text=True, timeout=10,
+                [
+                    "ffprobe",
+                    "-v",
+                    "error",
+                    "-select_streams",
+                    "a:0",
+                    "-show_entries",
+                    "stream=codec_name",
+                    "-of",
+                    "json",
+                    video_path,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
             audio_data = json.loads(audio_result.stdout)
             audio_streams = audio_data.get("streams", [])
@@ -918,7 +1079,8 @@ Respond ONLY with JSON: {"branding_visible": true/false, "layout_ok": true/false
                 "has_audio": len(audio_streams) > 0,
                 "duration": float(data.get("format", {}).get("duration", 0)),
                 "pix_fmt": video_stream.get("pix_fmt", ""),
-                "has_alpha": "yuva" in video_stream.get("pix_fmt", "") or "rgba" in video_stream.get("pix_fmt", ""),
+                "has_alpha": "yuva" in video_stream.get("pix_fmt", "")
+                or "rgba" in video_stream.get("pix_fmt", ""),
             }
         except Exception as e:
             return {"valid": False, "error": str(e)}
@@ -931,20 +1093,16 @@ Respond ONLY with JSON: {"branding_visible": true/false, "layout_ok": true/false
         warning_names: list[str] | None = None,
     ) -> ValidationResult:
         """Build a ValidationResult from checks, tagging critical vs warning failures."""
-        critical_names = set(critical_names or [])
-        warning_names = set(warning_names or [])
+        critical_set = set(critical_names or [])
+        warning_set = set(warning_names or [])
 
         failed_checks = [c for c in checks if not c.passed]
         passed_count = len([c for c in checks if c.passed])
         score = passed_count / len(checks) if checks else 1.0
 
-        critical_failures = [
-            c.message for c in failed_checks
-            if c.name in critical_names
-        ]
+        critical_failures = [c.message for c in failed_checks if c.name in critical_set]
         warnings = [
-            c.message for c in failed_checks
-            if c.name in warning_names or c.name not in critical_names
+            c.message for c in failed_checks if c.name in warning_set or c.name not in critical_set
         ]
 
         passed = len(critical_failures) == 0 and score >= VALIDATION_PASS_SCORE

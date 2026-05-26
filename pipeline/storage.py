@@ -3,20 +3,24 @@ StorageAdapter — abstraction over Cloudflare R2 / AWS S3.
 All pipeline components use this class. Never import boto3 directly elsewhere.
 Changing storage provider = change only this file.
 """
-import io
+
 import logging
-import os
 from pathlib import Path
-from typing import Optional
 
 import boto3
 from botocore.client import Config
 from botocore.exceptions import ClientError
 
 from pipeline.config import (
+    AWS_ACCESS_KEY_ID,
+    AWS_REGION,
+    AWS_SECRET_ACCESS_KEY,
+    R2_ACCESS_KEY_ID,
+    R2_BUCKET_NAME,
+    R2_ENDPOINT_URL,
+    R2_SECRET_KEY,
+    S3_BUCKET_NAME,
     STORAGE_PROVIDER,
-    R2_ACCESS_KEY_ID, R2_SECRET_KEY, R2_ENDPOINT_URL, R2_BUCKET_NAME,
-    AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, S3_BUCKET_NAME,
 )
 
 logger = logging.getLogger(__name__)
@@ -36,7 +40,7 @@ class StorageAdapter:
     Uses the S3-compatible API (boto3) for both providers.
     """
 
-    def __init__(self, provider: Optional[str] = None):
+    def __init__(self, provider: str | None = None):
         self._provider = provider or STORAGE_PROVIDER
         self._client, self._bucket = self._build_client()
         logger.info(f"StorageAdapter initialized: provider={self._provider}, bucket={self._bucket}")
@@ -92,7 +96,9 @@ class StorageAdapter:
         logger.info(f"Upload verified: {remote_key} ({local_path.stat().st_size / 1024:.1f} KB)")
         return remote_key
 
-    def upload_bytes(self, data: bytes, remote_key: str, content_type: str = "application/octet-stream") -> str:
+    def upload_bytes(
+        self, data: bytes, remote_key: str, content_type: str = "application/octet-stream"
+    ) -> str:
         """Upload raw bytes (e.g., JSON state) to storage."""
         if not data:
             raise ValueError("Cannot upload empty bytes.")

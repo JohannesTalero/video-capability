@@ -14,8 +14,9 @@ dependencies = [
     "modal>=0.63.0",
     "pydub>=0.25.1",
     "python-dotenv>=1.0.0",
-    "fastapi>=0.111.0",
-    "uvicorn>=0.30.0",
+    # fastapi + uvicorn se reinstalan cuando arranque Unit 8 (frontend/API).
+    # Hoy no se importan en ningún archivo y traen un advisory MAL-2026-4750
+    # sin fix upstream.
 ]
 
 [dependency-groups]
@@ -36,6 +37,11 @@ target-version = "py311"
 select = ["E", "F", "I", "B", "UP", "SIM"]
 ignore = ["E501"]
 
+[tool.ruff.lint.per-file-ignores]
+# scripts/*.py do `sys.path.insert()` before importing `pipeline.*`
+# so the script can run without the package being installed.
+"scripts/*.py" = ["E402"]
+
 [tool.mypy]
 python_version = "3.11"
 ignore_missing_imports = true
@@ -49,3 +55,22 @@ asyncio_mode = "auto"
 
 [tool.bandit]
 exclude_dirs = ["tests", ".venv"]
+# Skips with justification:
+#   B101 — `assert` used. We use asserts purely as mypy type-narrowing hints
+#          (`assert plan is not None`). They're not relied on for correctness
+#          checks, so being stripped under `python -O` is acceptable.
+#   B108 — `/tmp/phymac` default temp dir. Overridable via PHYMAC_TMP_DIR.
+#          Acceptable for a single-user pipeline.
+#   B110 — `try / except / pass` in Phase 1 cleanup helper. Best-effort
+#          deletion of large temp files; silencing errors is intentional.
+#   B310 — `urllib.request.urlopen` in Phase 6 download-URL check. The URL
+#          comes from internal storage metadata, not user input.
+#   B404 — `import subprocess`. Required to call ffmpeg/ffprobe from Phase 1
+#          and the validator (no Python alternative for video probing).
+#   B603 — `subprocess.run(cmd)` without `shell=True`. We always pass an
+#          argument LIST (not a shell string), which IS the safe pattern.
+#          B603 fires on the import regardless.
+#   B607 — Partial executable path (`"ffmpeg"`/`"ffprobe"`). Resolved via PATH,
+#          which is controlled on CI (ubuntu-latest, plus apt-installed tools
+#          in the Dockerfile). Switching to full paths would break local dev.
+skips = ["B101", "B108", "B110", "B310", "B404", "B603", "B607"]

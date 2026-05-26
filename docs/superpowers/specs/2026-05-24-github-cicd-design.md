@@ -1,8 +1,8 @@
 # Diseño: Llevar repo a GitHub + CI/CD
 
 **Fecha**: 2026-05-24
-**Estado**: Pendiente de aprobación
-**Repo objetivo**: https://github.com/johannes-talero/video-capability (público)
+**Estado**: En implementación (2026-05-26)
+**Repo real**: https://github.com/JohannesTalero/video-capability (público) — el spec original anotaba `johannes-talero`; el login real es `JohannesTalero` (CamelCase). GHCR namespaces se rebajan a lowercase: `ghcr.io/johannestalero/...`.
 **Licencia**: Apache-2.0
 
 ## 1. Objetivos

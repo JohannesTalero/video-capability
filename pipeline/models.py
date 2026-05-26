@@ -2,37 +2,38 @@
 Domain models for PhyMaC Video Auto-Edit Pipeline.
 All dataclasses shared across pipeline phases.
 """
+
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field, asdict
-from datetime import datetime
-from enum import Enum
+from dataclasses import asdict, dataclass, field
+from enum import StrEnum
 from typing import Any
-
 
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
 
-class ProjectStatus(str, Enum):
-    CREATED   = "created"
-    RUNNING   = "running"
-    PAUSED    = "paused"
+
+class ProjectStatus(StrEnum):
+    CREATED = "created"
+    RUNNING = "running"
+    PAUSED = "paused"
     COMPLETED = "completed"
-    FAILED    = "failed"
+    FAILED = "failed"
 
 
-class PhaseStatus(str, Enum):
-    PENDING   = "pending"
-    RUNNING   = "running"
+class PhaseStatus(StrEnum):
+    PENDING = "pending"
+    RUNNING = "running"
     COMPLETED = "completed"
-    FAILED    = "failed"
+    FAILED = "failed"
 
 
 # ---------------------------------------------------------------------------
 # Validation
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class CheckResult:
@@ -74,7 +75,7 @@ class ValidationResult:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> "ValidationResult":
+    def from_dict(cls, d: dict) -> ValidationResult:
         checks = [CheckResult(**c) for c in d.get("checks", [])]
         return cls(
             passed=d["passed"],
@@ -91,13 +92,14 @@ class ValidationResult:
 # Phase State
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PhaseState:
     phase_num: int
     status: PhaseStatus
     attempt: int = 0
-    started_at: str | None = None       # ISO string
-    completed_at: str | None = None     # ISO string
+    started_at: str | None = None  # ISO string
+    completed_at: str | None = None  # ISO string
     outputs: dict[str, Any] = field(default_factory=dict)
     validation: ValidationResult | None = None
     error_message: str | None = None
@@ -115,7 +117,7 @@ class PhaseState:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> "PhaseState":
+    def from_dict(cls, d: dict) -> PhaseState:
         validation = None
         if d.get("validation"):
             validation = ValidationResult.from_dict(d["validation"])
@@ -135,15 +137,16 @@ class PhaseState:
 # Project
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Project:
     project_id: str
     title: str
     brand_id: str
-    format_id: str          # e.g. "podcast_hablando_con_profes"
+    format_id: str  # e.g. "podcast_hablando_con_profes"
     video_original_key: str
-    created_at: str     # ISO string
-    updated_at: str     # ISO string
+    created_at: str  # ISO string
+    updated_at: str  # ISO string
     current_phase: int
     status: ProjectStatus
 
@@ -161,10 +164,11 @@ class Project:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> "Project":
+    def from_dict(cls, d: dict) -> Project:
         # Backward compat: older state.json files written before Phase 2
         # do not have format_id — fall back to the configured default.
         from pipeline.config import DEFAULT_FORMAT_ID
+
         return cls(
             project_id=d["project_id"],
             title=d["title"],
@@ -202,7 +206,7 @@ class ProjectState:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> "ProjectState":
+    def from_dict(cls, d: dict) -> ProjectState:
         project = Project.from_dict(d["project"])
         phases = {int(k): PhaseState.from_dict(v) for k, v in d["phases"].items()}
         return cls(project=project, phases=phases)
@@ -211,13 +215,14 @@ class ProjectState:
         return json.dumps(self.to_dict(), indent=2, ensure_ascii=False)
 
     @classmethod
-    def from_json(cls, s: str) -> "ProjectState":
+    def from_json(cls, s: str) -> ProjectState:
         return cls.from_dict(json.loads(s))
 
 
 # ---------------------------------------------------------------------------
 # Storage Key Convention
 # ---------------------------------------------------------------------------
+
 
 class StorageKey:
     """Centralized path convention for R2/S3 storage. No hardcoded paths elsewhere."""
@@ -271,6 +276,7 @@ class StorageKey:
 # Transcription
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TranscriptionSegment:
     id: int
@@ -308,7 +314,7 @@ class TranscriptionResult:
         return json.dumps(self.to_dict(), indent=2, ensure_ascii=False)
 
     @classmethod
-    def from_dict(cls, d: dict) -> "TranscriptionResult":
+    def from_dict(cls, d: dict) -> TranscriptionResult:
         segments = [TranscriptionSegment(**s) for s in d["segments"]]
         return cls(
             project_id=d["project_id"],
@@ -321,7 +327,7 @@ class TranscriptionResult:
         )
 
     @classmethod
-    def from_json(cls, s: str) -> "TranscriptionResult":
+    def from_json(cls, s: str) -> TranscriptionResult:
         return cls.from_dict(json.loads(s))
 
 
@@ -329,9 +335,10 @@ class TranscriptionResult:
 # Narrative Plan
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MaterialSpec:
-    tipo: str   # validated against the format's materials_whitelist
+    tipo: str  # validated against the format's materials_whitelist
     contenido: str
     timestamp_relativo: int
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -360,7 +367,7 @@ class Block:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> "Block":
+    def from_dict(cls, d: dict) -> Block:
         # Tolerate extra keys (LLM-generated dicts sometimes carry fields
         # we don't model) — keep only what MaterialSpec accepts.
         allowed = {"tipo", "contenido", "timestamp_relativo", "metadata"}
@@ -395,7 +402,7 @@ class NarrativePlan:
         return json.dumps(self.to_dict(), indent=2, ensure_ascii=False)
 
     @classmethod
-    def from_dict(cls, d: dict) -> "NarrativePlan":
+    def from_dict(cls, d: dict) -> NarrativePlan:
         blocks = [Block.from_dict(b) for b in d["blocks"]]
         return cls(
             project_id=d["project_id"],
@@ -404,13 +411,14 @@ class NarrativePlan:
         )
 
     @classmethod
-    def from_json(cls, s: str) -> "NarrativePlan":
+    def from_json(cls, s: str) -> NarrativePlan:
         return cls.from_dict(json.loads(s))
 
 
 # ---------------------------------------------------------------------------
 # Material Asset
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MaterialAsset:
@@ -440,6 +448,7 @@ class MaterialAsset:
 # Brand Config
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class BrandColors:
     primary: str
@@ -447,10 +456,12 @@ class BrandColors:
     accent: str
     text: str
 
+
 @dataclass
 class BrandFonts:
     heading: str
     body: str
+
 
 @dataclass
 class BrandAssets:
@@ -459,6 +470,7 @@ class BrandAssets:
     outro: str
     lower_third: str
     cortinillas: dict[str, str] = field(default_factory=dict)
+
 
 @dataclass
 class BrandConfig:
@@ -469,7 +481,7 @@ class BrandConfig:
     assets: BrandAssets
 
     @classmethod
-    def from_dict(cls, d: dict) -> "BrandConfig":
+    def from_dict(cls, d: dict) -> BrandConfig:
         return cls(
             brand_id=d["brand_id"],
             display_name=d["display_name"],
@@ -482,6 +494,7 @@ class BrandConfig:
 # ---------------------------------------------------------------------------
 # Render
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class RenderConfig:
