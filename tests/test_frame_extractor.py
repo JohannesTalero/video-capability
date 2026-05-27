@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -16,6 +17,8 @@ from pipeline.vision.frame_extractor import (
 @pytest.fixture
 def sample_video(tmp_path: Path) -> Path:
     """Synthetic 10s testsrc video 1920x1080 @ 30fps."""
+    if shutil.which("ffmpeg") is None:
+        pytest.skip("ffmpeg not available on PATH")
     video = tmp_path / "sample.mp4"
     subprocess.run(
         [

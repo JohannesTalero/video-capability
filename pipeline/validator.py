@@ -1175,9 +1175,7 @@ def _ffprobe_webm_summary(r2_key: str) -> dict:
         if result.returncode != 0:
             raise RuntimeError(f"ffprobe failed: {result.stderr[:200]}")
         info = json.loads(result.stdout)
-        video_streams = [
-            s for s in info.get("streams", []) if s.get("codec_type") == "video"
-        ]
+        video_streams = [s for s in info.get("streams", []) if s.get("codec_type") == "video"]
         vs = video_streams[0] if video_streams else {}
         tags = vs.get("tags") or {}
         return {
