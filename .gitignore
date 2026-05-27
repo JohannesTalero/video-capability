@@ -38,3 +38,12 @@ Thumbs.db
 # IDE
 .idea/
 .vscode/
+
+# Superpowers brainstorming companion
+.superpowers/
+
+# Phase 3 A/B spike outputs (videos grandes, throwaway)
+experiments/phase3-ab/_outputs/
+experiments/phase3-ab/*/node_modules/
+experiments/phase3-ab/*/venv/
+experiments/phase3-ab/*/__pycache__/

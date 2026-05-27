@@ -1,0 +1,30 @@
+{
+  "id": "phymac",
+  "name": "PhyMaC",
+  "colors": {
+    "primary":       "#2962FF",
+    "primary_dark":  "#0039CB",
+    "accent":        "#FF6D00",
+    "accent_dark":   "#C43E00",
+    "carbon":        "#212121",
+    "carbon_light":  "#484848",
+    "surface":       "#FFFFFF",
+    "background":    "#F5F5F5"
+  },
+  "fonts": {
+    "display": { "family": "Montserrat", "weights": [700, 800, 900], "source": "google" },
+    "body":    { "family": "Open Sans",  "weights": [400, 600, 700], "source": "google" }
+  },
+  "shadows": {
+    "button":      "0 4px 0 var(--color-primary-dark)",
+    "card":        "8px 8px 0 var(--color-carbon)",
+    "card_accent": "6px 6px 0 var(--color-accent)"
+  },
+  "radius":  { "button": 0, "card": 0, "badge": 4 },
+  "pattern": { "type": "cross-grid", "opacity": 0.13, "stroke": "white" },
+  "assets": {
+    "logo":        "brand-assets/logo.svg",
+    "logo_white":  "brand-assets/logo-white.svg",
+    "pattern_svg": "brand-assets/pattern.svg"
+  }
+}

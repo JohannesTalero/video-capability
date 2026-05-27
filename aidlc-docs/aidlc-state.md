@@ -62,6 +62,12 @@
   - Modelo default cambiado de `google/gemini-2.0-flash-exp:free` (deprecated, 404) a `openai/gpt-oss-120b:free`
   - Calidad de output del modelo free: estructuralmente válida pero conservadora en cortes (episodio sale 12 min vs target 22-32 min). Para producción usar modelo paid (Sonnet/GPT-4) via `LLM_MODEL_PLANNER` env var.
 - [ ] Unit 4: Fase 3 — Generación de Materiales
+  - **Spike A/B 2026-05-26 (Phase 3 Materials): COMPLETE. Stack ganador: HyperFrames.**
+  - Razón: HF score visual 3.64 vs Playwright 3.00 / Remotion 3.14 (margen >±0.3, sin tie-breakers); HF tipográficamente fuerte en chapter_marker (5/5), diagrama (4/4/4 en A+B+C). Spec en `docs/superpowers/specs/2026-05-26-phase3-materials-ab-spike-design.md`, plan en `docs/superpowers/plans/2026-05-26-phase3-materials-ab-spike-plan.md`.
+  - Manim quedó out-of-spike: `pycairo` no compila sin `libcairo2-dev` y sin `sudo` en WSL. Decisión válida por spec §10.
+  - Alpha en HyperFrames: la CLI con `--format webm` directo no emite alpha (`yuv420p` plano). Workaround validado: `--format mov` (ProRes `yuva444p12le`) + transcode con `ffmpeg -c:v libvpx-vp9 -pix_fmt yuva420p -auto-alt-ref 0` → WebM con alpha. Esto va al stack de producción Unit 4.
+  - Artefactos sobrevivientes movidos: `_shared/visual-specs.md` → `formats/podcast_hablando_con_profes/visual-specs.md`; `_shared/brand-pack.json` + `brand-assets/` → `brands/phymac/`.
+  - Sub-tipos de `diagrama` deferred: `barras` y `ciclo` quedan especificados en `formats/podcast_hablando_con_profes/visual-specs.md` para implementar en Unit 4 producción. Spike implementó solo `esquema_libre`.
 - [ ] Unit 5: Fase 4 — Composición + Branding
 - [ ] Unit 6: Fase 5 — Audio Processing
 - [ ] Unit 7: Fase 6 — Render Final + Checkpoints
