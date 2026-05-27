@@ -4,7 +4,7 @@
 
 1. **SOLO IDS EXISTENTES**: Todos los `segment_id` deben venir de la transcripción de entrada. No inventés ids.
 2. **NO DUPLICAR ENTRE CAPÍTULOS**: Un `segment_id` no puede aparecer en dos capítulos temáticos distintos. **Excepción**: el cold open (primer bloque) PUEDE reusar segmentos que también aparezcan en su capítulo natural — esa repetición es intencional (el gancho es un teaser que reaparece en su contexto). Es la única excepción permitida.
-3. **MATERIALES SOLO DEL WHITELIST**: Únicamente estos tipos están permitidos: `lower_third`, `pull_quote`, `chapter_marker`, `animacion_texto`, `transcript_fix`. Cualquier otro tipo se rechaza.
+3. **MATERIALES SOLO DEL WHITELIST**: Únicamente estos tipos están permitidos: `lower_third`, `pull_quote`, `chapter_marker`, `animacion_texto`, `ecuacion_latex`, `diagrama`, `transcript_fix`. Cualquier otro tipo se rechaza.
 
 ## Rol
 
@@ -61,6 +61,11 @@ Devuelve un JSON con la estructura indicada al final. NO incluyas comentarios, e
    - `chapter_marker` — título de capítulo entre bloques. Contenido: título breve (máx 6 palabras). `timestamp_relativo: 0`.
    - `animacion_texto` — palabra clave animada en pantalla. Contenido: la palabra/frase corta. Máx 1 por bloque.
    - `transcript_fix` — corrección de un artefacto de Whisper. Contenido: el texto corregido. `metadata`: `{"segment_id": int, "original": "texto whisper", "corrected": "texto correcto"}`. Usar cuando notes nombres propios mal transcritos, palabras inexistentes en español, o palabras que claramente son artefactos (e.g. "Uzme" → "Usme", "Jerez" → "ajedrez", "zapiens" → "sapiens").
+   - `ecuacion_latex` — fórmula matemática renderizada. **Emitir SOLO cuando el invitado menciona o explica una fórmula explícita**, no por temas matemáticos genéricos. Contenido: el LaTeX string (KaTeX-compatible: `\dfrac`, `\nabla`, `\partial`, `\sum`, `\int`, símbolos básicos; NO `\begin{align}`, packages externos, comandos custom). `metadata`: `{"caption": "label uppercase breve"}`, opcional `{"duration_seconds": float, default 5.0, máx 10}`. Ejemplo: invitado dice "la energía es E igual a m c cuadrado" → `{"tipo":"ecuacion_latex","contenido":"E = mc^2","metadata":{"caption":"Energía"}}`.
+   - `diagrama` — representación visual no-textual. Sub-tipo via `metadata.tipo_visual`:
+     - `"barras"`: comparación cuantitativa explícita. `metadata`: `{"tipo_visual":"barras","data":[{"label":str,"value":number}, ...]}`. Contenido: nombre breve del gráfico.
+     - `"ciclo"`: proceso/flujo secuencial (pasos, etapas). `metadata`: `{"tipo_visual":"ciclo","nodes":[str, ...]}` (3-7 nodos típico). Contenido: nombre del flujo.
+     - `"esquema_libre"`: cualquier otra cosa física/espacial (cuerpo libre, anatomía, circuito, geometría). `metadata`: `{"tipo_visual":"esquema_libre"}`. **NO incluyas `template_id` ni `params`** — eso lo decide Phase 3a mirando los frames. Contenido: descripción libre del diagrama (≤2 oraciones).
 
 ## Output schema
 
