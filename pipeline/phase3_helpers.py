@@ -20,13 +20,11 @@ def compute_material_id(block_id: str, idx_in_block: int, spec: MaterialSpec) ->
     - any field of spec (tipo, contenido, metadata) changes → new ID via hash
     - metadata key order does NOT affect ID (sort_keys=True)
     """
-    payload = "|".join(
-        [
-            spec.tipo,
-            spec.contenido,
-            json.dumps(spec.metadata, sort_keys=True, ensure_ascii=False),
-            str(spec.timestamp_relativo),
-        ]
+    payload = json.dumps(
+        [spec.tipo, spec.contenido, spec.metadata, spec.timestamp_relativo],
+        sort_keys=True,
+        ensure_ascii=False,
+        default=str,
     )
     content_hash = hashlib.sha256(payload.encode("utf-8")).hexdigest()[:8]
     return f"{block_id}_m{idx_in_block:02d}_{content_hash}"

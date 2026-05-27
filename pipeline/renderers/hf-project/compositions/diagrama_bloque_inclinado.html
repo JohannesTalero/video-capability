@@ -48,13 +48,15 @@
 <script>
   const { title, angle_deg, show_friction } = window.__hyperframes.getVariables();
   document.getElementById('title').textContent = title;
-  // Geometría dinámica según ángulo
-  const angle = angle_deg * Math.PI / 180;
+  // Clamp ángulo a [5°, 75°] para evitar tan() extremos y geometría degenerada
+  const rawAngle = Number(angle_deg);
+  const safeAngleDeg = Math.min(75, Math.max(5, Number.isFinite(rawAngle) ? rawAngle : 30));
+  const angle = safeAngleDeg * Math.PI / 180;
   // Plano: triángulo rectángulo en (100,400)-(700,400)-(700,400-600*tan(angle))
   const planeY = 400 - 600 * Math.tan(angle);
   document.getElementById('plane').setAttribute('points', `100,400 700,400 700,${planeY}`);
   // Bloque rotado, centrado en (450,245)
-  document.getElementById('block-g').setAttribute('transform', `translate(450,245) rotate(${-angle_deg})`);
+  document.getElementById('block-g').setAttribute('transform', `translate(450,245) rotate(${-safeAngleDeg})`);
   // Normal perpendicular al plano (-sin, -cos)
   const nx = 450 + 175 * (-Math.sin(angle));
   const ny = 245 + 175 * (-Math.cos(angle));

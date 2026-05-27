@@ -40,7 +40,6 @@ app = modal.App("phymac-phase3-render")
     image=hf_image,
     secrets=[
         modal.Secret.from_name("phymac-r2-creds"),
-        modal.Secret.from_name("phymac-openrouter"),
     ],
     timeout=600,
     cpu=2.0,

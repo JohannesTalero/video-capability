@@ -97,8 +97,10 @@ def _planned_from_dict(
         raise KeyError(f"invalid decision: {decision}")
     refined_dict = d.get("spec_refined")
     refined = MaterialSpec(**refined_dict) if refined_dict else None
-    if decision != "drop" and refined is None:
-        raise KeyError("decision != 'drop' requires spec_refined")
+    if decision == "modify" and refined is None:
+        raise KeyError("decision == 'modify' requires spec_refined")
+    if decision == "keep" and refined is None:
+        refined = original_spec
     return PlannedMaterial(
         material_id=material_id,
         block_id=block_id,
@@ -151,7 +153,7 @@ def plan_material_visual(
             content = resp.choices[0].message.content or ""
             parsed = _parse_response(content)
             return _planned_from_dict(material_id, block_id, original_spec, parsed)
-        except (json.JSONDecodeError, KeyError, TypeError) as e:
+        except (json.JSONDecodeError, KeyError, TypeError, IndexError, AttributeError) as e:
             last_error = f"{type(e).__name__}: {e}"
             logger.warning(
                 "visual_planner attempt %d/2 failed for %s: %s",

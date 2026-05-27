@@ -33,7 +33,7 @@ from pipeline.models import (
     TranscriptionResult,
     ValidationResult,
 )
-from pipeline.phase3_r2 import head_object_exists
+from pipeline.phase3_r2 import download_to_local, head_object_exists
 
 logger = logging.getLogger(__name__)
 
@@ -1146,12 +1146,49 @@ _DURATION_BY_TIPO_PHASE3: dict[str, float] = {
 
 
 def _ffprobe_webm_summary(r2_key: str) -> dict:
-    """Stub que en producción consulta R2 y descarga el webm o usa byte-range.
+    """Download webm from R2 to a temp file and ffprobe it.
 
-    Para tests, esta función está mockeada. Para runtime real, implementa
-    download a /tmp + ffprobe local + return summary dict.
+    Returns dict with width, height, duration, alpha_mode. Mocked in tests.
     """
-    raise NotImplementedError("Implement webm sampling for production. Mocked in tests.")
+    import tempfile
+
+    with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as tf:
+        tmp = Path(tf.name)
+    try:
+        download_to_local(r2_key, tmp)
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-print_format",
+                "json",
+                "-show_streams",
+                "-show_format",
+                str(tmp),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=30,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"ffprobe failed: {result.stderr[:200]}")
+        info = json.loads(result.stdout)
+        video_streams = [
+            s for s in info.get("streams", []) if s.get("codec_type") == "video"
+        ]
+        vs = video_streams[0] if video_streams else {}
+        tags = vs.get("tags") or {}
+        return {
+            "width": vs.get("width"),
+            "height": vs.get("height"),
+            "duration": float(info.get("format", {}).get("duration", 0) or 0),
+            "alpha_mode": tags.get("alpha_mode") or tags.get("ALPHA_MODE"),
+        }
+    finally:
+        if tmp.exists():
+            tmp.unlink()
 
 
 def _sample_check_alpha_dimensions_duration(

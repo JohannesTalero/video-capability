@@ -112,3 +112,9 @@ def download_video_to_local(project_id: str, target: Path) -> None:
     key = video_raw_key(project_id)
     target.parent.mkdir(parents=True, exist_ok=True)
     _get_adapter().download(key, target)
+
+
+def download_to_local(key: str, target: Path) -> None:
+    """Download arbitrary R2 key to local path."""
+    target.parent.mkdir(parents=True, exist_ok=True)
+    _get_adapter().download(key, target)

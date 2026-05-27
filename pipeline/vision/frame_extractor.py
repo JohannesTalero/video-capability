@@ -47,7 +47,16 @@ def extract_frames(
             "1",
             str(out_path),
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        except subprocess.TimeoutExpired as e:
+            raise FrameExtractionError(
+                f"ffmpeg timed out after {e.timeout}s at t={t}s on {video.name}"
+            ) from e
+        except (FileNotFoundError, OSError) as e:
+            raise FrameExtractionError(
+                f"ffmpeg invocation failed for t={t}s on {video.name}: {e}"
+            ) from e
         if result.returncode != 0 or not out_path.exists() or out_path.stat().st_size < 1024:
             raise FrameExtractionError(
                 f"ffmpeg failed for t={t}s on {video.name}: "

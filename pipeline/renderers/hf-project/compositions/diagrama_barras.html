@@ -36,9 +36,14 @@
 <script>
   const { title, data_json } = window.__hyperframes.getVariables();
   document.getElementById('title').textContent = title;
-  const data = JSON.parse(data_json || "[]");
+  let rawData;
+  try { rawData = JSON.parse(data_json || "[]"); }
+  catch (e) { console.warn('diagrama_barras: invalid data_json', e); rawData = []; }
+  const data = (Array.isArray(rawData) ? rawData : [])
+    .map(d => ({ label: String(d?.label ?? ''), value: Number(d?.value) }))
+    .filter(d => Number.isFinite(d.value));
   const chart = document.getElementById('chart');
-  const max = Math.max(...data.map(d => d.value), 1);
+  const max = data.length ? Math.max(...data.map(d => d.value), 1) : 1;
   data.forEach((d, i) => {
     const group = document.createElement('div');
     group.className = 'bar-group';

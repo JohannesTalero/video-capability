@@ -1,42 +1,40 @@
 # CodeRabbit configuration for video-capability
 # Docs: https://docs.coderabbit.ai/configure/configuration-file
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 
 language: "es"
 
 reviews:
   profile: "chill"
-    request_changes_workflow: false
-      high_level_summary: true
-        poem: false
-          review_status: true
-            collapse_walkthrough: false
-              auto_review:
-                  enabled: true
-                      drafts: false
-                          base_branches:
-                                - "develop"
-                                      - "main"
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - "develop"
+      - "main"
+  path_instructions:
+    - path: "pipeline/**"
+      instructions: |
+        Este directorio contiene la logica principal de procesamiento de video con IA (PhyMaC pipeline).
+        Revisar especialmente:
+          - Manejo de errores en llamadas a APIs externas (Modal, OpenRouter, ElevenLabs)
+          - Uso correcto de tipos en funciones async
+          - Que no haya secrets o API keys hardcodeadas
+          - Eficiencia en el procesamiento de audio/video
+    - path: ".github/workflows/**"
+      instructions: |
+        Revisar workflows de GitHub Actions.
+        Verificar: pins de versiones en actions, permisos minimos necesarios,
+        que los secrets referenciados existan, y que no haya comandos peligrosos.
+    - path: "tests/**"
+      instructions: |
+        Tests del proyecto. Verificar cobertura de casos edge,
+        uso correcto de fixtures y mocks para APIs externas.
 
-                                        path_instructions:
-                                            - path: "pipeline/**"
-                                                  instructions: |
-                                                          Este directorio contiene la logica principal de procesamiento de video con IA (PhyMaC pipeline).
-                                                                  Revisar especialmente:
-                                                                          - Manejo de errores en llamadas a APIs externas (Modal, OpenRouter, ElevenLabs)
-                                                                                  - Uso correcto de tipos en funciones async
-                                                                                          - Que no haya secrets o API keys hardcodeadas
-                                                                                                  - Eficiencia en el procesamiento de audio/video
-
-                                                                                                      - path: ".github/workflows/**"
-                                                                                                            instructions: |
-                                                                                                                    Revisar workflows de GitHub Actions.
-                                                                                                                            Verificar: pins de versiones en actions, permisos minimos necesarios,
-                                                                                                                                    que los secrets referenciados existan, y que no haya comandos peligrosos.
-                                                                                                                                    
-                                                                                                                                        - path: "tests/**"
-                                                                                                                                              instructions: |
-                                                                                                                                                      Tests del proyecto. Verificar cobertura de casos edge,
-                                                                                                                                                              uso correcto de fixtures y mocks para APIs externas.
-                                                                                                                                                              
-                                                                                                                                                              chat:
-                                                                                                                                                                auto_reply: true
+chat:
+  auto_reply: true

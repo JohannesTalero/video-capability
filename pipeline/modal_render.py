@@ -58,7 +58,10 @@ def _invoke_hf_render(
         "--variables",
         json.dumps(variables, ensure_ascii=False),
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=480)
+    except subprocess.TimeoutExpired as e:
+        raise RuntimeError(f"hyperframes render timed out after {e.timeout}s") from e
     if result.returncode != 0 or not mov_out.exists() or mov_out.stat().st_size < 1024:
         raise RuntimeError(
             f"hyperframes render failed: rc={result.returncode}, "
@@ -89,7 +92,10 @@ def _transcode_to_webm(mov_in: Path, webm_out: Path) -> None:
         "-an",
         str(webm_out),
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+    except subprocess.TimeoutExpired as e:
+        raise RuntimeError(f"ffmpeg transcode timed out after {e.timeout}s") from e
     if result.returncode != 0 or not webm_out.exists() or webm_out.stat().st_size < 1024:
         raise RuntimeError(
             f"ffmpeg transcode failed: rc={result.returncode}, "
@@ -181,7 +187,13 @@ def render_one(
                 "error": f"both render + fallback failed: original={error}; fallback={fe}",
             }
 
-    r2_key = upload_webm(project_id, material_id, webm_out)
+    try:
+        r2_key: str | None = upload_webm(project_id, material_id, webm_out)
+        upload_error: str | None = None
+    except Exception as ue:
+        logger.exception("upload_webm failed for %s", material_id)
+        r2_key = None
+        upload_error = f"upload_failed: {type(ue).__name__}: {ue}"
     elapsed = time.time() - t0
     # Cleanup local
     for p in (mov_out, webm_out):
@@ -192,5 +204,5 @@ def render_one(
         "render_status": status,
         "r2_key": r2_key,
         "render_seconds": round(elapsed, 2),
-        "error": error,
+        "error": upload_error or error,
     }

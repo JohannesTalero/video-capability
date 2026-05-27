@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -16,6 +17,8 @@ from pipeline.renderers.output_validator import (
 @pytest.fixture
 def sample_webm_alpha(tmp_path: Path) -> Path:
     """A 2.2s webm 1920x1080 with alpha channel via libvpx-vp9 yuva420p."""
+    if shutil.which("ffmpeg") is None:
+        pytest.skip("ffmpeg not available on PATH")
     raw = tmp_path / "raw.mov"
     subprocess.run(
         [

@@ -41,21 +41,26 @@
 <script>
   const { title, nodes_json } = window.__hyperframes.getVariables();
   document.getElementById('title').textContent = title;
-  const nodes = JSON.parse(nodes_json || "[]");
+  let parsedNodes;
+  try { parsedNodes = JSON.parse(nodes_json || "[]"); }
+  catch (e) { console.warn('diagrama_ciclo: invalid nodes_json', e); parsedNodes = []; }
+  const nodes = (Array.isArray(parsedNodes) ? parsedNodes : []).map(n => String(n));
   const container = document.getElementById('nodes');
   const cx = 50, cy = 55, radius = 30;
-  nodes.forEach((label, i) => {
-    const angle = (-90 + (360 / nodes.length) * i) * Math.PI / 180;
-    const x = cx + radius * Math.cos(angle);
-    const y = cy + radius * Math.sin(angle);
-    const el = document.createElement('div');
-    el.className = 'node';
-    el.style.left = `${x}%`;
-    el.style.top = `${y}%`;
-    el.style.transform = 'translate(-50%, -50%) scale(0)';
-    el.textContent = label;
-    container.appendChild(el);
-  });
+  if (nodes.length > 0) {
+    nodes.forEach((label, i) => {
+      const angle = (-90 + (360 / nodes.length) * i) * Math.PI / 180;
+      const x = cx + radius * Math.cos(angle);
+      const y = cy + radius * Math.sin(angle);
+      const el = document.createElement('div');
+      el.className = 'node';
+      el.style.left = `${x}%`;
+      el.style.top = `${y}%`;
+      el.style.transform = 'translate(-50%, -50%) scale(0)';
+      el.textContent = label;
+      container.appendChild(el);
+    });
+  }
   window.__timelines = window.__timelines || {};
   const tl = gsap.timeline({ paused: true });
   tl.from(".card", { opacity: 0, duration: 0.3 }, 0.1);

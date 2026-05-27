@@ -29,7 +29,10 @@ def _ffprobe_streams(path: Path) -> dict:
     )
     if result.returncode != 0:
         raise OutputValidationError(f"ffprobe failed: {result.stderr[:200]}")
-    return json.loads(result.stdout)
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError as e:
+        raise OutputValidationError(f"ffprobe output not valid JSON: {e}") from e
 
 
 def validate_webm(
@@ -61,7 +64,12 @@ def validate_webm(
     fmt_duration_str = info.get("format", {}).get("duration")
     if fmt_duration_str is None:
         raise OutputValidationError(f"no duration in ffprobe output for {path.name}")
-    duration = float(fmt_duration_str)
+    try:
+        duration = float(fmt_duration_str)
+    except (TypeError, ValueError) as e:
+        raise OutputValidationError(
+            f"duration not parseable ({fmt_duration_str!r}) for {path.name}: {e}"
+        ) from e
     if abs(duration - expected_duration) > duration_tolerance:
         raise OutputValidationError(
             f"duration {duration:.2f}s vs expected {expected_duration:.2f}s "
