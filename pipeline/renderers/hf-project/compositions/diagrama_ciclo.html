@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html data-composition-variables='[
+  {"id":"title","type":"string","label":"Título","default":"Ciclo"},
+  {"id":"nodes_json","type":"string","label":"Nodes (JSON array)","default":"[]"}
+]'>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../brand.css">
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; }
+  [data-composition-id="diagrama-ciclo"] {
+    position: relative; width: 1920px; height: 1080px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Open Sans', sans-serif;
+  }
+  .card { width: 70%; height: 70%; background: var(--primary);
+    box-shadow: 8px 8px 0 var(--carbon); position: relative;
+    display: flex; align-items: center; justify-content: center; }
+  .pattern { position: absolute; inset: 0; opacity: 0.13;
+    background-image:
+      repeating-linear-gradient(0deg, transparent 0, transparent 39px, rgba(255,255,255,0.5) 39px, rgba(255,255,255,0.5) 40px),
+      repeating-linear-gradient(90deg, transparent 0, transparent 39px, rgba(255,255,255,0.5) 39px, rgba(255,255,255,0.5) 40px); }
+  .title-top { position: absolute; top: 30px; left: 50%; transform: translateX(-50%);
+    font-family: 'Montserrat', sans-serif; font-weight: 800;
+    font-size: 28px; color: var(--surface); }
+  .nodes { position: relative; width: 100%; height: 100%; }
+  .node { position: absolute; background: var(--surface); border-top: 6px solid var(--accent);
+    padding: 20px 24px; font-family: 'Montserrat', sans-serif; font-weight: 700;
+    font-size: 20px; color: var(--carbon); transform: scale(0); }
+</style>
+</head>
+<body>
+<div data-composition-id="diagrama-ciclo" data-width="1920" data-height="1080" data-start="0" data-duration="6.0">
+  <div class="card">
+    <div class="pattern"></div>
+    <div class="title-top" id="title"></div>
+    <div class="nodes" id="nodes"></div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<script>
+  const { title, nodes_json } = window.__hyperframes.getVariables();
+  document.getElementById('title').textContent = title;
+  const nodes = JSON.parse(nodes_json || "[]");
+  const container = document.getElementById('nodes');
+  const cx = 50, cy = 55, radius = 30;
+  nodes.forEach((label, i) => {
+    const angle = (-90 + (360 / nodes.length) * i) * Math.PI / 180;
+    const x = cx + radius * Math.cos(angle);
+    const y = cy + radius * Math.sin(angle);
+    const el = document.createElement('div');
+    el.className = 'node';
+    el.style.left = `${x}%`;
+    el.style.top = `${y}%`;
+    el.style.transform = 'translate(-50%, -50%) scale(0)';
+    el.textContent = label;
+    container.appendChild(el);
+  });
+  window.__timelines = window.__timelines || {};
+  const tl = gsap.timeline({ paused: true });
+  tl.from(".card", { opacity: 0, duration: 0.3 }, 0.1);
+  tl.fromTo(".node",
+    { scale: 0, opacity: 0 },
+    { scale: 1, opacity: 1, duration: 0.4, stagger: 0.3, ease: "back.out(2)",
+      transformOrigin: "50% 50%" }, 0.4);
+  tl.to(".card", { opacity: 0, duration: 0.3, ease: "power2.in" }, 5.7);
+  window.__timelines["diagrama-ciclo"] = tl;
+</script>
+</body>
+</html>

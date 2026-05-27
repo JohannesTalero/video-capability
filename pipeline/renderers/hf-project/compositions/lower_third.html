@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html data-composition-variables='[
+  {"id":"name","type":"string","label":"Nombre","default":"Nombre"},
+  {"id":"subtitle","type":"string","label":"Subtítulo","default":""},
+  {"id":"position","type":"enum","label":"Posición","default":"bottom-left",
+   "options":[
+     {"value":"bottom-left","label":"Bottom-left"},
+     {"value":"top-left","label":"Top-left"},
+     {"value":"bottom-right","label":"Bottom-right"},
+     {"value":"top-right","label":"Top-right"}
+   ]}
+]'>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../brand.css">
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; }
+  [data-composition-id="lower-third"] {
+    position: relative; width: 1920px; height: 1080px;
+    font-family: 'Open Sans', sans-serif;
+  }
+  .lt {
+    position: absolute; background: var(--primary); color: var(--surface);
+    padding: 22px 32px; border-left: 6px solid var(--accent);
+    max-width: 50%; box-shadow: 6px 6px 0 var(--accent-dark);
+  }
+  [data-position="bottom-left"]  .lt { bottom: 8.6%; left: 5%; }
+  [data-position="top-left"]     .lt { top: 8.6%; left: 5%; }
+  [data-position="bottom-right"] .lt { bottom: 8.6%; right: 5%; }
+  [data-position="top-right"]    .lt { top: 8.6%; right: 5%; }
+  .lt h1 { margin: 0; font-family: 'Montserrat', sans-serif; font-weight: 900; font-size: 28px; line-height: 1.15; }
+  .lt p  { margin: 4px 0 0; font-weight: 400; font-size: 16px; opacity: 0.9; }
+</style>
+</head>
+<body>
+<div data-composition-id="lower-third" data-width="1920" data-height="1080" data-start="0" data-duration="6.0">
+  <div class="lt" id="lt-root">
+    <h1 id="name"></h1>
+    <p id="subtitle"></p>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<script>
+  const { name, subtitle, position } = window.__hyperframes.getVariables();
+  document.querySelector('[data-composition-id="lower-third"]').dataset.position = position;
+  document.getElementById('name').textContent = name;
+  document.getElementById('subtitle').textContent = subtitle;
+  if (!subtitle) document.getElementById('subtitle').style.display = 'none';
+  window.__timelines = window.__timelines || {};
+  const tl = gsap.timeline({ paused: true });
+  const slideIn = position.endsWith('right') ? 130 : -130;
+  tl.fromTo(".lt", { xPercent: slideIn }, { xPercent: 0, duration: 0.4, ease: "power3.out" }, 0.1);
+  tl.to(".lt", { xPercent: slideIn, duration: 0.6, ease: "power3.in" }, 5.4);
+  window.__timelines["lower-third"] = tl;
+</script>
+</body>
+</html>

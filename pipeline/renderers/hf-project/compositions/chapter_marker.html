@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html data-composition-variables='[
+  {"id":"chapter_number","type":"number","label":"Número","default":1},
+  {"id":"chapter_title","type":"string","label":"Título","default":"Capítulo"}
+]'>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../brand.css">
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; }
+  [data-composition-id="chapter-marker"] {
+    position: relative; width: 1920px; height: 1080px;
+    font-family: 'Open Sans', sans-serif; overflow: hidden;
+  }
+  .bg {
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, var(--primary) 50%, var(--primary-dark) 100%);
+  }
+  .pattern {
+    position: absolute; inset: 0; opacity: 0.13;
+    background-image:
+      repeating-linear-gradient(0deg, transparent 0, transparent 39px, rgba(255,255,255,0.5) 39px, rgba(255,255,255,0.5) 40px),
+      repeating-linear-gradient(90deg, transparent 0, transparent 39px, rgba(255,255,255,0.5) 39px, rgba(255,255,255,0.5) 40px);
+  }
+  .label { position: absolute; top: calc(8% + 240px); left: 10%;
+    font-weight: 600; font-size: 22px; color: var(--surface);
+    opacity: 0.7; letter-spacing: 6px; }
+  .num { position: absolute; top: 8%; left: 10%;
+    font-family: 'Montserrat', sans-serif; font-weight: 900;
+    font-size: 220px; color: var(--accent); line-height: 1; }
+  .title { position: absolute; top: 50%; left: 50%;
+    font-family: 'Montserrat', sans-serif; font-weight: 900;
+    font-size: 84px; color: var(--surface); text-align: center; }
+</style>
+</head>
+<body>
+<div data-composition-id="chapter-marker" data-width="1920" data-height="1080" data-start="0" data-duration="4.2">
+  <div class="bg"></div>
+  <div class="pattern"></div>
+  <div class="label">CAPÍTULO</div>
+  <div class="num" id="num"></div>
+  <div class="title" id="title"></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<script>
+  const { chapter_number, chapter_title } = window.__hyperframes.getVariables();
+  document.getElementById('num').textContent = chapter_number;
+  document.getElementById('title').textContent = chapter_title;
+  window.__timelines = window.__timelines || {};
+  const tl = gsap.timeline({ paused: true });
+  tl.from(".bg", { opacity: 0, duration: 0.2, ease: "power2.out" }, 0);
+  tl.from(".pattern", { opacity: 0, duration: 0.3, ease: "power2.out" }, 0.1);
+  tl.from(".num", { scale: 0, opacity: 0, duration: 0.3, ease: "back.out(2)" }, 0.1);
+  tl.from(".label", { opacity: 0, duration: 0.3, ease: "power2.out" }, 0.3);
+  tl.fromTo(".title",
+    { xPercent: -50, y: 80, opacity: 0 },
+    { xPercent: -50, y: 0, opacity: 1, duration: 0.5, ease: "power3.out" }, 0.2);
+  tl.to([".bg", ".pattern", ".label", ".num", ".title"],
+    { opacity: 0, duration: 0.4, ease: "power2.in" }, 3.8);
+  window.__timelines["chapter-marker"] = tl;
+</script>
+</body>
+</html>

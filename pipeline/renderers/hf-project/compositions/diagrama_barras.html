@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html data-composition-variables='[
+  {"id":"title","type":"string","label":"Título","default":"Comparación"},
+  {"id":"data_json","type":"string","label":"Data (JSON array)","default":"[]"}
+]'>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../brand.css">
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; }
+  [data-composition-id="diagrama-barras"] {
+    position: relative; width: 1920px; height: 1080px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Open Sans', sans-serif;
+  }
+  .card { width: 70%; background: var(--surface); border-top: 6px solid var(--accent);
+    padding: 40px 50px; box-shadow: 8px 8px 0 var(--carbon); }
+  .title { font-family: 'Montserrat', sans-serif; font-weight: 800;
+    font-size: 32px; color: var(--carbon); margin-bottom: 30px; }
+  .chart { display: flex; align-items: flex-end; gap: 40px; height: 360px; }
+  .bar-group { flex: 1; display: flex; flex-direction: column; align-items: center; }
+  .bar { width: 80%; background: var(--primary);
+    box-shadow: 6px 6px 0 var(--primary-dark); transform-origin: bottom; transform: scaleY(0); }
+  .bar.alt { background: var(--accent); box-shadow: 6px 6px 0 var(--accent-dark); }
+  .bar-label { margin-top: 12px; font-weight: 600; font-size: 16px; color: var(--carbon); }
+</style>
+</head>
+<body>
+<div data-composition-id="diagrama-barras" data-width="1920" data-height="1080" data-start="0" data-duration="6.0">
+  <div class="card">
+    <div class="title" id="title"></div>
+    <div class="chart" id="chart"></div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<script>
+  const { title, data_json } = window.__hyperframes.getVariables();
+  document.getElementById('title').textContent = title;
+  const data = JSON.parse(data_json || "[]");
+  const chart = document.getElementById('chart');
+  const max = Math.max(...data.map(d => d.value), 1);
+  data.forEach((d, i) => {
+    const group = document.createElement('div');
+    group.className = 'bar-group';
+    const bar = document.createElement('div');
+    bar.className = 'bar' + (i % 2 ? ' alt' : '');
+    bar.style.height = `${(d.value / max) * 100}%`;
+    bar.dataset.idx = i;
+    const lbl = document.createElement('div');
+    lbl.className = 'bar-label';
+    lbl.textContent = d.label;
+    group.appendChild(bar);
+    group.appendChild(lbl);
+    chart.appendChild(group);
+  });
+  window.__timelines = window.__timelines || {};
+  const tl = gsap.timeline({ paused: true });
+  tl.from(".card", { opacity: 0, duration: 0.3 }, 0.1);
+  tl.to(".bar", { scaleY: 1, duration: 0.5, ease: "power3.out", stagger: 0.15 }, 0.4);
+  tl.to(".card", { opacity: 0, duration: 0.3, ease: "power2.in" }, 5.7);
+  window.__timelines["diagrama-barras"] = tl;
+</script>
+</body>
+</html>

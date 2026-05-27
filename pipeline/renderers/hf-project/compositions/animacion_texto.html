@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html data-composition-variables='[
+  {"id":"text","type":"string","label":"Texto","default":"TEXTO"},
+  {"id":"position","type":"enum","label":"Posición","default":"top-right",
+   "options":[
+     {"value":"top-right","label":"TR"},{"value":"top-left","label":"TL"},
+     {"value":"bottom-right","label":"BR"},{"value":"bottom-left","label":"BL"}
+   ]}
+]'>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../brand.css">
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; }
+  [data-composition-id="animacion-texto"] {
+    position: relative; width: 1920px; height: 1080px;
+    font-family: 'Montserrat', sans-serif;
+  }
+  .badge {
+    position: absolute; background: var(--accent); color: var(--surface);
+    padding: 18px 36px; transform: rotate(-2deg);
+    font-weight: 900; font-size: 52px;
+    letter-spacing: 2px; text-transform: uppercase;
+    box-shadow: 6px 6px 0 var(--accent-dark);
+  }
+  [data-position="top-right"]    .badge { top: 80px; right: 120px; }
+  [data-position="top-left"]     .badge { top: 80px; left: 120px; }
+  [data-position="bottom-right"] .badge { bottom: 120px; right: 120px; }
+  [data-position="bottom-left"]  .badge { bottom: 120px; left: 120px; }
+</style>
+</head>
+<body>
+<div data-composition-id="animacion-texto" data-width="1920" data-height="1080" data-start="0" data-duration="2.2">
+  <div class="badge" id="badge"></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<script>
+  const { text, position } = window.__hyperframes.getVariables();
+  document.querySelector('[data-composition-id="animacion-texto"]').dataset.position = position;
+  document.getElementById('badge').textContent = text;
+  window.__timelines = window.__timelines || {};
+  const tl = gsap.timeline({ paused: true });
+  tl.from(".badge", { scale: 0, opacity: 0, duration: 0.4, ease: "back.out(2.5)" }, 0.1);
+  tl.to(".badge", { scale: 0.9, opacity: 0, duration: 0.3, ease: "power2.in" }, 1.9);
+  window.__timelines["animacion-texto"] = tl;
+</script>
+</body>
+</html>
