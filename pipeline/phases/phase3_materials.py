@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import tempfile
 from pathlib import Path
 from typing import Any
 
+from pipeline.formats import load_format
 from pipeline.modal_app import app as modal_app
 from pipeline.modal_app import render_material
-from pipeline.models import NarrativePlan, PlannedMaterial
+from pipeline.models import NarrativePlan, PlannedMaterial, ProjectState, StorageKey
 from pipeline.phase3_helpers import flatten_plan_to_materials
 from pipeline.phase3_r2 import (
     download_video_to_local,
@@ -22,6 +24,8 @@ from pipeline.phase3_r2 import (
     upload_visual_plan,
 )
 from pipeline.renderers.dispatch import load_diagram_registry
+from pipeline.storage import StorageAdapter
+from pipeline.validator import validate_phase3
 from pipeline.vision.frame_extractor import extract_frames
 from pipeline.vision.visual_planner import plan_material_visual
 
@@ -165,3 +169,113 @@ def run_phase3(
         upload_manifest(project_id, manifest)
 
     return {"manifest": manifest}
+
+
+# ---------------------------------------------------------------------------
+# Visual specs summary (hard-coded for Phase 3; sourced from format in future)
+# ---------------------------------------------------------------------------
+
+_VISUAL_SPECS_SUMMARY: dict[str, Any] = {
+    "lower_third": {
+        "description": "Franja semitransparente en la parte inferior con nombre y cargo del speaker.",
+        "default_position": "bottom-left",
+        "duration_seconds": 6.0,
+    },
+    "pull_quote": {
+        "description": "Frase destacada del speaker, centrada sobre fondo con overlay de marca.",
+        "default_position": "center",
+        "duration_seconds": 6.6,
+    },
+    "chapter_marker": {
+        "description": "Título de capítulo en pantalla completa, transición breve al inicio del bloque.",
+        "default_position": "center",
+        "duration_seconds": 4.2,
+    },
+    "animacion_texto": {
+        "description": "Texto animado de una a tres palabras clave, entrada de izquierda.",
+        "default_position": "top-right",
+        "duration_seconds": 2.2,
+    },
+    "ecuacion_latex": {
+        "description": "Ecuación matemática renderizada con KaTeX sobre fondo claro.",
+        "default_position": "center",
+        "duration_seconds": 5.0,
+    },
+    "diagrama": {
+        "description": "Diagrama visual (barras, ciclo o esquema libre) generado desde datos estructurados.",
+        "default_position": "center",
+        "duration_seconds": 6.0,
+    },
+}
+
+
+# ---------------------------------------------------------------------------
+# Orchestrator-compatible runner
+# ---------------------------------------------------------------------------
+
+
+def run_phase_3(state: ProjectState) -> dict:
+    """
+    Phase 3 runner. Registered with PipelineOrchestrator.
+
+    Loads the Phase 2 plan and brand pack from storage, then delegates to
+    run_phase3() for visual planning + render + manifest assembly. The
+    resulting manifest is validated with validate_phase3() before returning.
+
+    Returns:
+        dict with scalar keys consumed by the orchestrator:
+          - manifest_count       (int)
+          - manifest_storage_key (str)
+    """
+    project_id = state.project.project_id
+    storage = StorageAdapter()
+
+    # 1. Load Phase 2 plan.
+    plan_key = StorageKey.narrative_plan(project_id)
+    logger.info(f"[Phase 3] Loading narrative plan: {plan_key}")
+    plan = NarrativePlan.from_json(storage.download_json(plan_key))
+
+    # 2. Load brand pack.
+    # TODO: resolve brand_id from format.json once that field is added.
+    brand_id = state.project.brand_id
+    brand_key = f"brands/{brand_id}/brand.json"
+    logger.info(f"[Phase 3] Loading brand pack: {brand_key}")
+    brand: dict[str, Any] = json.loads(storage.download_json(brand_key))
+
+    # 3. Load format config for whitelist validation.
+    format_id = state.project.format_id
+    logger.info(f"[Phase 3] Loading format config: {format_id}")
+    fmt = load_format(format_id)
+
+    # 4. Run Phase 3 (visual planning → render → manifest).
+    logger.info(f"[Phase 3] Starting pipeline for project {project_id}...")
+    result = run_phase3(plan, brand, _VISUAL_SPECS_SUMMARY)
+    manifest: list[dict] = result["manifest"]
+
+    # 5. Validate manifest.
+    logger.info(f"[Phase 3] Validating manifest ({len(manifest)} entries)...")
+    validation = validate_phase3(manifest, whitelist=list(fmt.materials_whitelist))
+    if validation.critical_failures:
+        raise ValueError(
+            f"Phase 3 manifest failed validation — {len(validation.critical_failures)} "
+            f"critical failure(s): {'; '.join(validation.critical_failures[:3])}"
+        )
+
+    manifest_key = StorageKey.materials_manifest(project_id)
+    logger.info(f"[Phase 3] Complete: {len(manifest)} materials, manifest at {manifest_key}")
+
+    return {
+        "manifest_count": len(manifest),
+        "manifest_storage_key": manifest_key,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Orchestrator registration
+# ---------------------------------------------------------------------------
+
+
+def register(orchestrator) -> None:
+    """Register the Phase 3 runner with the orchestrator."""
+    orchestrator.register_phase(3, run_phase_3)
+    logger.info("Phase 3 (Materials) registered.")

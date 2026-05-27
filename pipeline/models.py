@@ -264,6 +264,10 @@ class StorageKey:
         return f"projects/{project_id}/phase6/final.mp4"
 
     @staticmethod
+    def materials_manifest(project_id: str) -> str:
+        return f"projects/{project_id}/phase3/materials_manifest.json"
+
+    @staticmethod
     def brand_config(brand_id: str) -> str:
         return f"brands/{brand_id}/config.json"
 
