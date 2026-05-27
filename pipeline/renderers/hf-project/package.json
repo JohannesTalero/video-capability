@@ -1,0 +1,8 @@
+{
+  "name": "phymac-phase3-renderers",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "hyperframes": "^0.6.47"
+  }
+}

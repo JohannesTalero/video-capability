@@ -47,3 +47,6 @@ experiments/phase3-ab/_outputs/
 experiments/phase3-ab/*/node_modules/
 experiments/phase3-ab/*/venv/
 experiments/phase3-ab/*/__pycache__/
+
+# HyperFrames node_modules en pipeline/renderers/
+pipeline/renderers/hf-project/node_modules/

@@ -1,0 +1,15 @@
+{
+  "name": "phymac-phase3-renderers",
+  "version": "1.0.0",
+  "compositions": [
+    "compositions/lower_third.html",
+    "compositions/pull_quote.html",
+    "compositions/chapter_marker.html",
+    "compositions/animacion_texto.html",
+    "compositions/ecuacion_latex.html",
+    "compositions/diagrama_barras.html",
+    "compositions/diagrama_ciclo.html",
+    "compositions/diagrama_bloque_inclinado.html",
+    "compositions/text_card_fallback.html"
+  ]
+}
