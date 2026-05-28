@@ -26,11 +26,15 @@ hf_image = (
         "apt-get install -y nodejs",
     )
     .pip_install("boto3>=1.34.0", "python-dotenv>=1.0.0")
-    .add_local_python_source("pipeline")
-    .add_local_dir(local_path=str(HF_PROJECT_LOCAL), remote_path="/app/hf-project")
+    .add_local_dir(
+        local_path=str(HF_PROJECT_LOCAL),
+        remote_path="/app/hf-project",
+        copy=True,
+    )
     .run_commands(
         "cd /app/hf-project && npm install --omit=dev --no-audit --no-fund",
     )
+    .add_local_python_source("pipeline")
 )
 
 app = modal.App("phymac-phase3-render")

@@ -27,9 +27,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from pipeline.formats import load_format  # noqa: E402
-from pipeline.models import NarrativePlan  # noqa: E402
+from pipeline.models import NarrativePlan, StorageKey  # noqa: E402
 from pipeline.phases.phase3_materials import run_phase3  # noqa: E402
-from pipeline.storage import StorageAdapter, StorageKey  # noqa: E402
+from pipeline.storage import StorageAdapter  # noqa: E402
 from pipeline.validator import validate_phase3  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message)s")
@@ -41,8 +41,7 @@ def main(project_id: str) -> int:
     if not storage.exists(plan_key):
         print(f"ERROR: no Phase 2 plan at {plan_key}. Run Phase 2 first.")
         return 1
-    plan_dict = storage.download_json(plan_key)
-    plan = NarrativePlan.from_dict(plan_dict)
+    plan = NarrativePlan.from_json(storage.download_json(plan_key))
     total_materials = sum(len(b.support_material) for b in plan.blocks)
     print(f"Loaded plan: {len(plan.blocks)} blocks, {total_materials} materials total")
 
