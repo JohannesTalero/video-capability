@@ -97,6 +97,14 @@ def run_phase3(
     existing_planned = load_visual_plan(project_id) or []
     materials = flatten_plan_to_materials(plan)
 
+    # Defensive: Phase 2 may omit chapter_number; inject 1-indexed by appearance order.
+    chapter_counter = 0
+    for _, _, spec in materials:
+        if spec.tipo == "chapter_marker":
+            chapter_counter += 1
+            if "chapter_number" not in spec.metadata:
+                spec.metadata = {**spec.metadata, "chapter_number": chapter_counter}
+
     # template_registry does not depend on format — caller resolves format externally
     template_registry = load_diagram_registry().get("templates", [])
 
