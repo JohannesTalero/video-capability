@@ -454,44 +454,45 @@ class MaterialAsset:
 
 
 @dataclass
-class BrandColors:
-    primary: str
-    secondary: str
-    accent: str
-    text: str
-
-
-@dataclass
-class BrandFonts:
-    heading: str
-    body: str
-
-
-@dataclass
-class BrandAssets:
-    logo: str
-    intro: str
-    outro: str
-    lower_third: str
-    cortinillas: dict[str, str] = field(default_factory=dict)
-
-
-@dataclass
 class BrandConfig:
-    brand_id: str
-    display_name: str
-    colors: BrandColors
-    fonts: BrandFonts
-    assets: BrandAssets
+    """Brand kit, espejo 1:1 de brands/<id>/brand.json (schema del spike 2026-05-26).
+
+    Los sub-objetos quedan como dicts: el JSON es la fuente de verdad y los
+    consumidores (brand_css.py, composiciones HyperFrames) los leen por clave.
+    """
+
+    id: str
+    name: str
+    colors: dict[str, str]
+    fonts: dict[str, Any]
+    shadows: dict[str, str]
+    radius: dict[str, int]
+    pattern: dict[str, Any]
+    assets: dict[str, str]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "colors": self.colors,
+            "fonts": self.fonts,
+            "shadows": self.shadows,
+            "radius": self.radius,
+            "pattern": self.pattern,
+            "assets": self.assets,
+        }
 
     @classmethod
-    def from_dict(cls, d: dict) -> BrandConfig:
+    def from_dict(cls, d: dict[str, Any]) -> BrandConfig:
         return cls(
-            brand_id=d["brand_id"],
-            display_name=d["display_name"],
-            colors=BrandColors(**d["colors"]),
-            fonts=BrandFonts(**d["fonts"]),
-            assets=BrandAssets(**d["assets"]),
+            id=d["id"],
+            name=d["name"],
+            colors=d["colors"],
+            fonts=d["fonts"],
+            shadows=d.get("shadows", {}),
+            radius=d.get("radius", {}),
+            pattern=d.get("pattern", {}),
+            assets=d["assets"],
         )
 
 
