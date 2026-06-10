@@ -4,6 +4,8 @@
     "pull_quote",
     "chapter_marker",
     "animacion_texto",
+    "ecuacion_latex",
+    "diagrama",
     "transcript_fix"
   ]
 }

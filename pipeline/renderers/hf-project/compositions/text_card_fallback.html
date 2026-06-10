@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html data-composition-variables='[
+  {"id":"text","type":"string","label":"Texto","default":"..."},
+  {"id":"position","type":"enum","label":"Posición","default":"center",
+   "options":[{"value":"center","label":"Center"},{"value":"bottom-left","label":"BL"}]}
+]'>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../brand.css">
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; }
+  [data-composition-id="text-card-fallback"] {
+    position: relative; width: 1920px; height: 1080px;
+    font-family: 'Open Sans', sans-serif;
+  }
+  .card { background: var(--surface); padding: 28px 36px;
+    border-left: 6px solid var(--accent);
+    box-shadow: 6px 6px 0 var(--carbon); max-width: 60%;
+    font-family: 'Montserrat', sans-serif; font-weight: 700;
+    font-size: 28px; color: var(--carbon); }
+  [data-position="center"] .card { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+  [data-position="bottom-left"] .card { position: absolute; bottom: 8%; left: 5%; }
+</style>
+</head>
+<body>
+<div data-composition-id="text-card-fallback" data-width="1920" data-height="1080" data-start="0" data-duration="5.0">
+  <div class="card" id="card"></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<script>
+  const { text, position } = window.__hyperframes.getVariables();
+  document.querySelector('[data-composition-id="text-card-fallback"]').dataset.position = position;
+  document.getElementById('card').textContent = text;
+  window.__timelines = window.__timelines || {};
+  const tl = gsap.timeline({ paused: true });
+  tl.from(".card", { opacity: 0, duration: 0.3 }, 0.1);
+  tl.to(".card", { opacity: 0, duration: 0.3, ease: "power2.in" }, 4.7);
+  window.__timelines["text-card-fallback"] = tl;
+</script>
+</body>
+</html>

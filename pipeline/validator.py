@@ -33,6 +33,7 @@ from pipeline.models import (
     TranscriptionResult,
     ValidationResult,
 )
+from pipeline.phase3_r2 import download_to_local, head_object_exists
 
 logger = logging.getLogger(__name__)
 
@@ -1128,3 +1129,266 @@ Respond ONLY with JSON: {"branding_visible": true/false, "layout_ok": true/false
         if any("segments" in f for f in critical_failures):
             return "Whisper may have failed. Check Modal GPU logs and retry."
         return "Review phase logs and retry. Use --skip-validation only if you've confirmed output manually."
+
+
+# ---------------------------------------------------------------------------
+# Phase 3 — Materiales de soporte (Unit 4)
+# ---------------------------------------------------------------------------
+
+_DURATION_BY_TIPO_PHASE3: dict[str, float] = {
+    "lower_third": 6.0,
+    "pull_quote": 6.6,
+    "chapter_marker": 4.2,
+    "animacion_texto": 2.2,
+    "ecuacion_latex": 5.0,
+    "diagrama": 6.0,
+}
+
+
+def _ffprobe_webm_summary(r2_key: str) -> dict:
+    """Download webm from R2 to a temp file and ffprobe it.
+
+    Returns dict with width, height, duration, alpha_mode. Mocked in tests.
+    """
+    import tempfile
+
+    with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as tf:
+        tmp = Path(tf.name)
+    try:
+        download_to_local(r2_key, tmp)
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-print_format",
+                "json",
+                "-show_streams",
+                "-show_format",
+                str(tmp),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=30,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"ffprobe failed: {result.stderr[:200]}")
+        info = json.loads(result.stdout)
+        video_streams = [s for s in info.get("streams", []) if s.get("codec_type") == "video"]
+        vs = video_streams[0] if video_streams else {}
+        tags = vs.get("tags") or {}
+        return {
+            "width": vs.get("width"),
+            "height": vs.get("height"),
+            "duration": float(info.get("format", {}).get("duration", 0) or 0),
+            "alpha_mode": tags.get("alpha_mode") or tags.get("ALPHA_MODE"),
+        }
+    finally:
+        if tmp.exists():
+            tmp.unlink()
+
+
+def _sample_check_alpha_dimensions_duration(
+    manifest: list[dict], sample_size: int = 1
+) -> tuple[list[CheckResult], list[CheckResult]]:
+    """Run ffprobe-based checks on 1 of every `sample_size` (1=every) ok/fallback entries."""
+    crit: list[CheckResult] = []
+    warn: list[CheckResult] = []
+    candidates = [e for e in manifest if e["render_status"] in {"ok", "fallback"}]
+    sampled = candidates[:: max(sample_size, 1)] or candidates[:1]
+    for entry in sampled:
+        try:
+            info = _ffprobe_webm_summary(entry["r2_key"])
+        except Exception as e:
+            crit.append(
+                CheckResult(
+                    name="ffprobe_sample",
+                    passed=False,
+                    value=str(e),
+                    threshold="successful probe",
+                    message=f"could not probe {entry['material_id']}",
+                )
+            )
+            continue
+        if (info.get("width") != 1920) or (info.get("height") != 1080):
+            crit.append(
+                CheckResult(
+                    name="webm_dimensions_correct",
+                    passed=False,
+                    value=f"{info.get('width')}x{info.get('height')}",
+                    threshold="1920x1080",
+                    message=f"dimensions wrong on {entry['material_id']}",
+                )
+            )
+        spec = entry.get("refined_spec") or entry.get("original_spec") or {}
+        tipo = spec.get("tipo") or ""
+        expected = _DURATION_BY_TIPO_PHASE3.get(tipo, 5.0)
+        if abs(float(info.get("duration", 0)) - expected) > 0.2:
+            crit.append(
+                CheckResult(
+                    name="webm_duration_matches_spec",
+                    passed=False,
+                    value=info.get("duration"),
+                    threshold=f"{expected}±0.2",
+                    message=f"duration off on {entry['material_id']}",
+                )
+            )
+        if info.get("alpha_mode") != "1":
+            crit.append(
+                CheckResult(
+                    name="webm_alpha_present",
+                    passed=False,
+                    value=info.get("alpha_mode"),
+                    threshold="alpha_mode=1",
+                    message=f"alpha missing on {entry['material_id']}",
+                )
+            )
+    return crit, warn
+
+
+def validate_phase3(
+    manifest: list[dict],
+    whitelist: list[str],
+    *,
+    drop_threshold: float = 0.30,
+    fallback_threshold: float = 0.10,
+) -> ValidationResult:
+    """Validate the Phase 3 manifest. See spec §10."""
+    checks: list[CheckResult] = []
+    critical: list[str] = []
+    warnings: list[str] = []
+
+    # 1. all_materials_have_status
+    bad_status = [
+        e for e in manifest if e.get("render_status") not in {"ok", "fallback", "dropped"}
+    ]
+    if bad_status:
+        critical.append(f"{len(bad_status)} entries with invalid render_status")
+    checks.append(
+        CheckResult(
+            name="all_materials_have_status",
+            passed=not bad_status,
+            value=len(bad_status),
+            threshold=0,
+            message="every entry must have a known render_status",
+        )
+    )
+
+    # 2. r2_keys_resolvable
+    unresolvable = []
+    for e in manifest:
+        if e.get("render_status") in {"ok", "fallback"}:
+            key = e.get("r2_key")
+            if not key or not head_object_exists(key):
+                unresolvable.append(e["material_id"])
+    if unresolvable:
+        critical.append(f"r2_key not resolvable for {len(unresolvable)} entries")
+    checks.append(
+        CheckResult(
+            name="r2_keys_resolvable",
+            passed=not unresolvable,
+            value=len(unresolvable),
+            threshold=0,
+            message="every non-dropped entry must have an existing r2_key",
+        )
+    )
+
+    # 3-5. webm sample checks
+    if not critical:  # skip if R2 itself failed
+        sample_crit, sample_warn = _sample_check_alpha_dimensions_duration(manifest)
+        for c in sample_crit:
+            critical.append(c.message)
+            checks.append(c)
+        for w in sample_warn:
+            warnings.append(w.message)
+            checks.append(w)
+
+    # 6. whitelist_respected
+    whitelist_violations = []
+    for e in manifest:
+        if e.get("render_status") == "dropped":
+            continue
+        refined = e.get("refined_spec") or e.get("original_spec") or {}
+        tipo = refined.get("tipo")
+        if tipo not in whitelist:
+            whitelist_violations.append(f"{e['material_id']}:{tipo}")
+    if whitelist_violations:
+        critical.append(f"whitelist violations: {whitelist_violations[:5]}")
+    checks.append(
+        CheckResult(
+            name="whitelist_respected",
+            passed=not whitelist_violations,
+            value=len(whitelist_violations),
+            threshold=0,
+            message="refined tipo must be in materials whitelist",
+        )
+    )
+
+    # 7. drop_rate warning
+    total = len(manifest) or 1
+    dropped = sum(1 for e in manifest if e.get("render_status") == "dropped")
+    drop_rate = dropped / total
+    if drop_rate > drop_threshold:
+        warnings.append(f"drop rate {drop_rate:.2%} exceeds {drop_threshold:.0%}")
+    checks.append(
+        CheckResult(
+            name="drop_rate_acceptable",
+            passed=drop_rate <= drop_threshold,
+            value=f"{drop_rate:.2%}",
+            threshold=f"<= {drop_threshold:.0%}",
+            message="dropped materials should be infrequent",
+        )
+    )
+
+    # 8. fallback_rate warning
+    fallback = sum(1 for e in manifest if e.get("render_status") == "fallback")
+    fb_rate = fallback / total
+    if fb_rate > fallback_threshold:
+        warnings.append(f"fallback rate {fb_rate:.2%} exceeds {fallback_threshold:.0%}")
+    checks.append(
+        CheckResult(
+            name="fallback_rate_acceptable",
+            passed=fb_rate <= fallback_threshold,
+            value=f"{fb_rate:.2%}",
+            threshold=f"<= {fallback_threshold:.0%}",
+            message="recurring fallback indicates renderer issue",
+        )
+    )
+
+    # 9. reasoning_quality (warning)
+    bad_reasoning_keywords = ("no se ve", "negro", "vacío", "frame negro")
+    bad_reasoning = [
+        e
+        for e in manifest
+        if any(kw in (e.get("reasoning", "") or "").lower() for kw in bad_reasoning_keywords)
+    ]
+    if len(bad_reasoning) > 0.20 * total:
+        warnings.append(f"reasoning quality: {len(bad_reasoning)}/{total} mention blank frame")
+    checks.append(
+        CheckResult(
+            name="reasoning_quality",
+            passed=len(bad_reasoning) <= 0.20 * total,
+            value=len(bad_reasoning),
+            threshold=f"<= {int(0.20 * total)}",
+            message="too many entries flag blank/black frames",
+        )
+    )
+
+    # Score
+    crit_weight = len(critical) * 0.6
+    warn_weight = len(warnings) * 0.4 / max(len(checks), 1)
+    score = max(0.0, 1.0 - crit_weight - warn_weight)
+    return ValidationResult(
+        passed=not critical,
+        phase=3,
+        score=round(score, 2),
+        checks=checks,
+        critical_failures=critical,
+        warnings=warnings,
+        recommendation=(
+            "Phase 3 OK — manifest válido y artefactos en R2."
+            if not critical
+            else f"Phase 3 FAILED — {len(critical)} críticos: {'; '.join(critical[:3])}"
+        ),
+    )

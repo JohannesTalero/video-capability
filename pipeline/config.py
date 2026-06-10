@@ -54,6 +54,10 @@ OPENROUTER_BASE_URL = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.
 LLM_MODEL_PLANNER = os.environ.get("LLM_MODEL_PLANNER", "openai/gpt-oss-120b:free")
 LLM_MODEL_VALIDATOR = os.environ.get("LLM_MODEL_VALIDATOR", "openai/gpt-oss-120b:free")
 LLM_MODEL_VISION = os.environ.get("LLM_MODEL_VISION", "openai/gpt-oss-120b:free")
+LLM_MODEL_VISION_PLANNER = os.getenv(
+    "LLM_MODEL_VISION_PLANNER",
+    "anthropic/claude-sonnet-4-6",
+)
 
 # Optional metadata for OpenRouter analytics dashboard
 OPENROUTER_APP_NAME = os.environ.get("OPENROUTER_APP_NAME", "phymac-pipeline")

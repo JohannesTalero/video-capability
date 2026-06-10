@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html data-composition-variables='[
+  {"id":"latex","type":"string","label":"LaTeX","default":"E = mc^2"},
+  {"id":"caption","type":"string","label":"Caption","default":"Ecuación"},
+  {"id":"position","type":"enum","label":"Posición","default":"bottom-right",
+   "options":[{"value":"bottom-right","label":"BR"},{"value":"bottom-left","label":"BL"}]}
+]'>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../brand.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; }
+  [data-composition-id="ecuacion-latex"] {
+    position: relative; width: 1920px; height: 1080px;
+    font-family: 'Open Sans', sans-serif;
+  }
+  .card {
+    position: absolute; background: var(--carbon); padding: 28px 36px 28px 50px;
+    box-shadow: 6px 6px 0 var(--accent); max-width: 60%;
+  }
+  [data-position="bottom-right"] .card { bottom: 8%; right: 5%; }
+  [data-position="bottom-left"]  .card { bottom: 8%; left: 5%; }
+  .card::before {
+    content: ''; position: absolute; left: 24px; top: 18%; bottom: 18%;
+    width: 6px; background: var(--accent);
+  }
+  .label {
+    font-weight: 600; font-size: 14px; color: var(--accent);
+    letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px;
+  }
+  .eq { font-size: 42px; color: var(--surface); }
+  .eq .katex { color: var(--surface); }
+</style>
+</head>
+<body>
+<div data-composition-id="ecuacion-latex" data-width="1920" data-height="1080" data-start="0" data-duration="5.0">
+  <div class="card">
+    <div class="label" id="lbl"></div>
+    <div class="eq" id="eq"></div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script>
+  const { latex, caption, position } = window.__hyperframes.getVariables();
+  document.querySelector('[data-composition-id="ecuacion-latex"]').dataset.position = position;
+  document.getElementById('lbl').textContent = caption;
+  document.getElementById('eq').innerHTML = katex.renderToString(
+    latex, { throwOnError: false, displayMode: true }
+  );
+</script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<script>
+  window.__timelines = window.__timelines || {};
+  const tl = gsap.timeline({ paused: true });
+  tl.from(".card", { y: 40, opacity: 0, duration: 0.4, ease: "power3.out" }, 0.1);
+  tl.to(".card", { opacity: 0, duration: 0.3, ease: "power2.in" }, 4.7);
+  window.__timelines["ecuacion-latex"] = tl;
+</script>
+</body>
+</html>

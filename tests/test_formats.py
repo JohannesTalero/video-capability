@@ -33,6 +33,8 @@ def test_podcast_whitelist_contains_expected_tipos():
         "pull_quote",
         "chapter_marker",
         "animacion_texto",
+        "ecuacion_latex",
+        "diagrama",
         "transcript_fix",
     }
     assert whitelist == expected

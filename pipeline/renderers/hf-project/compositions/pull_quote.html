@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html data-composition-variables='[
+  {"id":"quote","type":"string","label":"Cita","default":"..."},
+  {"id":"speaker","type":"string","label":"Speaker","default":""}
+]'>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../brand.css">
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; }
+  [data-composition-id="pull-quote"] {
+    position: relative; width: 1920px; height: 1080px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Open Sans', sans-serif;
+  }
+  .card {
+    position: relative; width: 72%; background: var(--surface);
+    border-left: 8px solid var(--accent); padding: 70px 80px 50px;
+    box-shadow: 8px 8px 0 var(--carbon);
+  }
+  .quote-mark {
+    position: absolute; top: -10px; left: 30px;
+    font-family: 'Montserrat', sans-serif; font-weight: 900;
+    font-size: 180px; color: var(--primary); line-height: 1;
+  }
+  blockquote {
+    margin: 0; font-family: 'Montserrat', sans-serif; font-weight: 800;
+    font-size: 42px; color: var(--carbon); line-height: 1.3;
+  }
+  .speaker {
+    margin-top: 22px; font-weight: 600; font-size: 14px;
+    color: var(--carbon-light); text-transform: uppercase; letter-spacing: 2px;
+  }
+</style>
+</head>
+<body>
+<div data-composition-id="pull-quote" data-width="1920" data-height="1080" data-start="0" data-duration="6.6">
+  <div class="card">
+    <span class="quote-mark">"</span>
+    <blockquote id="q"></blockquote>
+    <div class="speaker" id="sp"></div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<script>
+  const { quote, speaker } = window.__hyperframes.getVariables();
+  document.getElementById('q').textContent = quote;
+  if (speaker) {
+    document.getElementById('sp').textContent = "— " + speaker;
+  } else {
+    document.getElementById('sp').style.display = 'none';
+  }
+  window.__timelines = window.__timelines || {};
+  const tl = gsap.timeline({ paused: true });
+  tl.from(".card", { scale: 0.95, opacity: 0, duration: 0.3, ease: "power2.out" }, 0.1);
+  tl.to(".card", { opacity: 0, duration: 0.3, ease: "power2.in" }, 6.3);
+  window.__timelines["pull-quote"] = tl;
+</script>
+</body>
+</html>

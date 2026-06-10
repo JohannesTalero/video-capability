@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html data-composition-variables='[
+  {"id":"title","type":"string","label":"Título","default":"Diagrama de cuerpo libre"},
+  {"id":"angle_deg","type":"number","label":"Ángulo","default":30},
+  {"id":"show_friction","type":"boolean","label":"Mostrar fricción","default":false}
+]'>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../brand.css">
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; }
+  [data-composition-id="diagrama-bloque-inclinado"] {
+    position: relative; width: 1920px; height: 1080px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Open Sans', sans-serif;
+  }
+  .card { width: 70%; background: var(--surface); border-top: 6px solid var(--accent);
+    padding: 40px 50px; box-shadow: 8px 8px 0 var(--carbon); }
+  .title { font-family: 'Montserrat', sans-serif; font-weight: 800;
+    font-size: 24px; color: var(--carbon); margin-bottom: 20px; }
+  svg { display: block; margin: 0 auto; }
+</style>
+</head>
+<body>
+<div data-composition-id="diagrama-bloque-inclinado" data-width="1920" data-height="1080" data-start="0" data-duration="6.0">
+  <div class="card">
+    <div class="title" id="title"></div>
+    <svg viewBox="0 0 800 480" width="800" height="480" id="svg">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--primary)"/>
+        </marker>
+      </defs>
+      <polygon class="plane" id="plane" points="" fill="var(--surface)" stroke="var(--carbon)" stroke-width="4"/>
+      <g class="block" id="block-g">
+        <rect class="block-rect" x="-60" y="-50" width="120" height="100" fill="var(--carbon-light)" stroke="var(--carbon)" stroke-width="4"/>
+      </g>
+      <line class="vec-g" x1="450" y1="245" x2="450" y2="420" stroke="var(--primary)" stroke-width="5" marker-end="url(#arrow)"/>
+      <text class="lab-g" x="465" y="370" font-family="Montserrat" font-weight="700" font-size="28" fill="var(--carbon)">mg</text>
+      <line class="vec-n" id="vec-n" x1="450" y1="245" x2="" y2="" stroke="var(--primary)" stroke-width="5" marker-end="url(#arrow)"/>
+      <text class="lab-n" id="lab-n" x="" y="" font-family="Montserrat" font-weight="700" font-size="28" fill="var(--carbon)">N</text>
+      <line class="vec-f" id="vec-f" x1="450" y1="245" x2="" y2="" stroke="var(--accent)" stroke-width="5" marker-end="url(#arrow)" style="display:none"/>
+      <text class="lab-f" id="lab-f" x="" y="" font-family="Montserrat" font-weight="700" font-size="28" fill="var(--carbon)" style="display:none">f</text>
+    </svg>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<script>
+  const { title, angle_deg, show_friction } = window.__hyperframes.getVariables();
+  document.getElementById('title').textContent = title;
+  // Clamp ángulo a [5°, 75°] para evitar tan() extremos y geometría degenerada
+  const rawAngle = Number(angle_deg);
+  const safeAngleDeg = Math.min(75, Math.max(5, Number.isFinite(rawAngle) ? rawAngle : 30));
+  const angle = safeAngleDeg * Math.PI / 180;
+  // Plano: triángulo rectángulo en (100,400)-(700,400)-(700,400-600*tan(angle))
+  const planeY = 400 - 600 * Math.tan(angle);
+  document.getElementById('plane').setAttribute('points', `100,400 700,400 700,${planeY}`);
+  // Bloque rotado, centrado en (450,245)
+  document.getElementById('block-g').setAttribute('transform', `translate(450,245) rotate(${-safeAngleDeg})`);
+  // Normal perpendicular al plano (-sin, -cos)
+  const nx = 450 + 175 * (-Math.sin(angle));
+  const ny = 245 + 175 * (-Math.cos(angle));
+  document.getElementById('vec-n').setAttribute('x2', nx);
+  document.getElementById('vec-n').setAttribute('y2', ny);
+  document.getElementById('lab-n').setAttribute('x', nx - 35);
+  document.getElementById('lab-n').setAttribute('y', ny + 15);
+  // Fricción paralela al plano (cos, sin) si show_friction
+  if (show_friction) {
+    const fx = 450 + 130 * Math.cos(angle);
+    const fy = 245 + 130 * Math.sin(angle);
+    const ff = document.getElementById('vec-f');
+    const lf = document.getElementById('lab-f');
+    ff.style.display = '';
+    lf.style.display = '';
+    ff.setAttribute('x2', fx);
+    ff.setAttribute('y2', fy);
+    lf.setAttribute('x', fx + 10);
+    lf.setAttribute('y', fy + 25);
+  }
+  window.__timelines = window.__timelines || {};
+  const tl = gsap.timeline({ paused: true });
+  tl.from(".card", { opacity: 0, duration: 0.3 }, 0.1);
+  tl.from(".plane", { opacity: 0, duration: 0.4 }, 0.3);
+  tl.from(".block", { opacity: 0, duration: 0.3 }, 0.6);
+  tl.from(".vec-g", { opacity: 0, duration: 0.3 }, 0.9);
+  tl.from(".lab-g", { opacity: 0, duration: 0.2 }, 1.1);
+  tl.from(".vec-n", { opacity: 0, duration: 0.3 }, 1.3);
+  tl.from(".lab-n", { opacity: 0, duration: 0.2 }, 1.5);
+  if (show_friction) {
+    tl.from(".vec-f", { opacity: 0, duration: 0.3 }, 1.7);
+    tl.from(".lab-f", { opacity: 0, duration: 0.2 }, 1.9);
+  }
+  tl.to(".card", { opacity: 0, duration: 0.3, ease: "power2.in" }, 5.7);
+  window.__timelines["diagrama-bloque-inclinado"] = tl;
+</script>
+</body>
+</html>

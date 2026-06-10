@@ -1,0 +1,16 @@
+{
+  "templates": [
+    {
+      "id": "bloque_inclinado",
+      "name": "Bloque sobre plano inclinado",
+      "composition": "diagrama_bloque_inclinado.html",
+      "params_schema": {
+        "title": {"type": "string", "default": "Diagrama de cuerpo libre"},
+        "angle_deg": {"type": "number", "default": 30, "min": 5, "max": 75},
+        "show_friction": {"type": "boolean", "default": false}
+      },
+      "keywords": ["bloque", "plano inclinado", "rampa", "cuerpo libre", "fricción"],
+      "fits_well": "Cuerpo libre de un bloque sobre plano inclinado con peso y normal (opcional fricción)."
+    }
+  ]
+}

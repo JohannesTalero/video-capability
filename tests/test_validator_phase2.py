@@ -209,12 +209,12 @@ def test_triple_appearance_still_critical():
 def test_unknown_material_tipo_critical():
     plan = _good_plan()
     plan.blocks[1].support_material.append(
-        MaterialSpec("ecuacion_latex", "F=ma", 10),
+        MaterialSpec("tipo_inexistente", "X", 10),
     )
     result = _validate(plan)
     assert not result.passed
     failures = " ".join(result.critical_failures).lower()
-    assert "tipo" in failures or "unknown" in failures or "ecuacion" in failures
+    assert "tipo" in failures or "unknown" in failures or "tipo_inexistente" in failures
 
 
 def test_pull_quote_excess_only_warning():

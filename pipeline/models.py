@@ -264,6 +264,10 @@ class StorageKey:
         return f"projects/{project_id}/phase6/final.mp4"
 
     @staticmethod
+    def materials_manifest(project_id: str) -> str:
+        return f"projects/{project_id}/phase3/materials_manifest.json"
+
+    @staticmethod
     def brand_config(brand_id: str) -> str:
         return f"brands/{brand_id}/config.json"
 
@@ -508,10 +512,101 @@ class RenderConfig:
 
 
 @dataclass
-class RenderResult:
+class Phase4RenderResult:
+    """Output of the Phase 4/5/6 full-video render pipeline."""
+
     project_id: str
     storage_key: str
     download_url: str
     file_size_mb: float
     duration_seconds: float
     render_time_seconds: float
+
+
+# ---------------------------------------------------------------------------
+# Phase 3 — Materiales de soporte (Unit 4)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class PlannedMaterial:
+    """Output de Phase 3a: la decisión visual refinada para un material."""
+
+    material_id: str
+    block_id: str
+    original_spec: MaterialSpec
+    decision: str  # "keep" | "modify" | "drop"
+    spec_refined: MaterialSpec | None  # None si decision == "drop"
+    position: str | dict[str, float] | None  # ej "bottom-left" o {"x_pct":.05,"y_pct":.85}
+    reframe: dict[str, Any] | None  # {type, params, t_start_relative, t_end_relative}
+    reasoning: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "material_id": self.material_id,
+            "block_id": self.block_id,
+            "original_spec": self.original_spec.to_dict(),
+            "decision": self.decision,
+            "spec_refined": self.spec_refined.to_dict() if self.spec_refined else None,
+            "position": self.position,
+            "reframe": self.reframe,
+            "reasoning": self.reasoning,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> PlannedMaterial:
+        refined = d.get("spec_refined")
+        return cls(
+            material_id=d["material_id"],
+            block_id=d["block_id"],
+            original_spec=MaterialSpec(**d["original_spec"]),
+            decision=d["decision"],
+            spec_refined=MaterialSpec(**refined) if refined else None,
+            position=d.get("position"),
+            reframe=d.get("reframe"),
+            reasoning=d.get("reasoning", ""),
+        )
+
+
+@dataclass
+class RenderResult:
+    """Output de un Modal worker que renderizó un material."""
+
+    material_id: str
+    status: str  # "ok" | "fallback" | "dropped"
+    r2_key: str | None
+    render_seconds: float
+    error: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "material_id": self.material_id,
+            "status": self.status,
+            "r2_key": self.r2_key,
+            "render_seconds": self.render_seconds,
+            "error": self.error,
+        }
+
+
+@dataclass
+class ManifestEntry:
+    """Entry de phase3/materials_manifest.json."""
+
+    material_id: str
+    block_id: str
+    original_spec: dict[str, Any]
+    refined_spec: dict[str, Any] | None
+    decision: str
+    position: str | dict[str, float] | None
+    reframe: dict[str, Any] | None
+    reasoning: str
+    render_status: str  # "ok" | "fallback" | "dropped"
+    r2_key: str | None
+    render_seconds: float
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> ManifestEntry:
+        return cls(**d)
