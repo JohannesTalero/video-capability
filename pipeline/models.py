@@ -268,6 +268,14 @@ class StorageKey:
         return f"projects/{project_id}/phase3/materials_manifest.json"
 
     @staticmethod
+    def phase4_timeline(project_id: str) -> str:
+        return f"projects/{project_id}/phase4/timeline.json"
+
+    @staticmethod
+    def brand_render(project_id: str, name: str) -> str:
+        return f"projects/{project_id}/phase4/brand/{name}.mp4"
+
+    @staticmethod
     def brand_config(brand_id: str) -> str:
         return f"brands/{brand_id}/config.json"
 
@@ -454,44 +462,45 @@ class MaterialAsset:
 
 
 @dataclass
-class BrandColors:
-    primary: str
-    secondary: str
-    accent: str
-    text: str
-
-
-@dataclass
-class BrandFonts:
-    heading: str
-    body: str
-
-
-@dataclass
-class BrandAssets:
-    logo: str
-    intro: str
-    outro: str
-    lower_third: str
-    cortinillas: dict[str, str] = field(default_factory=dict)
-
-
-@dataclass
 class BrandConfig:
-    brand_id: str
-    display_name: str
-    colors: BrandColors
-    fonts: BrandFonts
-    assets: BrandAssets
+    """Brand kit, espejo 1:1 de brands/<id>/brand.json (schema del spike 2026-05-26).
+
+    Los sub-objetos quedan como dicts: el JSON es la fuente de verdad y los
+    consumidores (brand_css.py, composiciones HyperFrames) los leen por clave.
+    """
+
+    id: str
+    name: str
+    colors: dict[str, str]
+    fonts: dict[str, Any]
+    shadows: dict[str, str]
+    radius: dict[str, int]
+    pattern: dict[str, Any]
+    assets: dict[str, str]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "colors": self.colors,
+            "fonts": self.fonts,
+            "shadows": self.shadows,
+            "radius": self.radius,
+            "pattern": self.pattern,
+            "assets": self.assets,
+        }
 
     @classmethod
-    def from_dict(cls, d: dict) -> BrandConfig:
+    def from_dict(cls, d: dict[str, Any]) -> BrandConfig:
         return cls(
-            brand_id=d["brand_id"],
-            display_name=d["display_name"],
-            colors=BrandColors(**d["colors"]),
-            fonts=BrandFonts(**d["fonts"]),
-            assets=BrandAssets(**d["assets"]),
+            id=d["id"],
+            name=d["name"],
+            colors=d["colors"],
+            fonts=d["fonts"],
+            shadows=d.get("shadows", {}),
+            radius=d.get("radius", {}),
+            pattern=d.get("pattern", {}),
+            assets=d["assets"],
         )
 
 
@@ -521,6 +530,36 @@ class Phase4RenderResult:
     file_size_mb: float
     duration_seconds: float
     render_time_seconds: float
+
+
+@dataclass
+class Phase5AudioResult:
+    """Output del procesamiento de audio (Fase 5, Unit 6)."""
+
+    project_id: str
+    storage_key: str
+    loudness_in_lufs: float
+    loudness_out_lufs: float
+    true_peak_dbtp: float
+    noise_reduction_applied: bool
+    duration_seconds: float
+    process_time_seconds: float
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "project_id": self.project_id,
+            "storage_key": self.storage_key,
+            "loudness_in_lufs": self.loudness_in_lufs,
+            "loudness_out_lufs": self.loudness_out_lufs,
+            "true_peak_dbtp": self.true_peak_dbtp,
+            "noise_reduction_applied": self.noise_reduction_applied,
+            "duration_seconds": self.duration_seconds,
+            "process_time_seconds": self.process_time_seconds,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> Phase5AudioResult:
+        return cls(**d)
 
 
 # ---------------------------------------------------------------------------
