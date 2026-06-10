@@ -1392,3 +1392,23 @@ def validate_phase3(
             else f"Phase 3 FAILED — {len(critical)} críticos: {'; '.join(critical[:3])}"
         ),
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 — Composición (Unit 5): validate_phase4() se implementa aquí.
+# Checks (spec §4): duración ≈ Σ keep + intro/outro + markers (±5%),
+# 1920x1080, fps, audio stream presente, objeto R2 > 0 bytes,
+# timeline.json parseable y consistente con el plan.
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Phase 5 — Audio (Unit 6): validate_phase5() se implementa aquí.
+# Checks (spec §5): loudness -14 ±1 LUFS, true peak < -1 dBTP,
+# duración = input ±0.1s, video stream intacto, tamaño > 0.
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Phase 6 — Render final (Unit 7): validate_phase6() se implementa aquí.
+# Checks (spec §6): h264+AAC, 1080p, faststart, duración = phase5 ±0.1s,
+# URL descargable.
+# ---------------------------------------------------------------------------
