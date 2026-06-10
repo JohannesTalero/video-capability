@@ -268,6 +268,14 @@ class StorageKey:
         return f"projects/{project_id}/phase3/materials_manifest.json"
 
     @staticmethod
+    def phase4_timeline(project_id: str) -> str:
+        return f"projects/{project_id}/phase4/timeline.json"
+
+    @staticmethod
+    def brand_render(project_id: str, name: str) -> str:
+        return f"projects/{project_id}/phase4/brand/{name}.mp4"
+
+    @staticmethod
     def brand_config(brand_id: str) -> str:
         return f"brands/{brand_id}/config.json"
 
@@ -522,6 +530,36 @@ class Phase4RenderResult:
     file_size_mb: float
     duration_seconds: float
     render_time_seconds: float
+
+
+@dataclass
+class Phase5AudioResult:
+    """Output del procesamiento de audio (Fase 5, Unit 6)."""
+
+    project_id: str
+    storage_key: str
+    loudness_in_lufs: float
+    loudness_out_lufs: float
+    true_peak_dbtp: float
+    noise_reduction_applied: bool
+    duration_seconds: float
+    process_time_seconds: float
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "project_id": self.project_id,
+            "storage_key": self.storage_key,
+            "loudness_in_lufs": self.loudness_in_lufs,
+            "loudness_out_lufs": self.loudness_out_lufs,
+            "true_peak_dbtp": self.true_peak_dbtp,
+            "noise_reduction_applied": self.noise_reduction_applied,
+            "duration_seconds": self.duration_seconds,
+            "process_time_seconds": self.process_time_seconds,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> Phase5AudioResult:
+        return cls(**d)
 
 
 # ---------------------------------------------------------------------------
