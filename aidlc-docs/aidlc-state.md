@@ -61,7 +61,11 @@
   - Smoke test E2E sobre `cudris-20260526`: PASS (score 0.78, 0 críticos). Plan generado por `openai/gpt-oss-120b:free`: 7 bloques, 29 segments, cold open con frases contraintuitivas "ley" y "homo sapiens", capítulos con nombres narrativos coincidentes con el plan editado a mano
   - Modelo default cambiado de `google/gemini-2.0-flash-exp:free` (deprecated, 404) a `openai/gpt-oss-120b:free`
   - Calidad de output del modelo free: estructuralmente válida pero conservadora en cortes (episodio sale 12 min vs target 22-32 min). Para producción usar modelo paid (Sonnet/GPT-4) via `LLM_MODEL_PLANNER` env var.
-- [ ] Unit 4: Fase 3 — Generación de Materiales
+- [x] Unit 4: Fase 3 — Generación de Materiales — COMPLETE & VALIDATED E2E
+  - Implementación completa en PR #8 (`feat(unit4): Phase 3 vision-aware materials`, merge `ff881c4`, CI verde + CodeRabbit SUCCESS): modelos Phase 3, visual planner LLM-vision, 9 composiciones HyperFrames, renderer dispatch, Modal app, `validate_phase3()` con 9 checks, 12 archivos de tests
+  - Smoke E2E 2026-06-09 sobre `cudris-20260526`: PASS — 16/16 materiales `status=ok` (7 bloques: 6 animacion_texto, 5 pull_quote, 4 chapter_marker, 1 lower_third), todos `decision=keep`, validación `passed=True score=1.0`
+  - Idempotencia verificada: segundo run en 2m13s con cache hits totales (visual_plan + renders en R2), manifest idéntico al primero. Nota: el run idempotente re-descarga el video completo (1.4 GB, ~90% del tiempo) — posible short-circuit antes del download como mejora futura
+  - Artefactos en R2: `projects/cudris-20260526/phase3/visual_plan.json`, `materials_manifest.json`, `materials/*.webm` (16 archivos, 38–243 KB c/u)
   - **Spike A/B 2026-05-26 (Phase 3 Materials): COMPLETE. Stack ganador: HyperFrames.**
   - Razón: HF score visual 3.64 vs Playwright 3.00 / Remotion 3.14 (margen >±0.3, sin tie-breakers); HF tipográficamente fuerte en chapter_marker (5/5), diagrama (4/4/4 en A+B+C). Spec en `docs/superpowers/specs/2026-05-26-phase3-materials-ab-spike-design.md`, plan en `docs/superpowers/plans/2026-05-26-phase3-materials-ab-spike-plan.md`.
   - Manim quedó out-of-spike: `pycairo` no compila sin `libcairo2-dev` y sin `sudo` en WSL. Decisión válida por spec §10.
