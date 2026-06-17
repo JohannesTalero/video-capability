@@ -108,8 +108,12 @@ def load_visual_plan(project_id: str) -> list[dict[str, Any]] | None:
     return json.loads(data.decode("utf-8"))
 
 
-def download_video_to_local(project_id: str, target: Path) -> None:
-    key = video_raw_key(project_id)
+def download_video_to_local(
+    project_id: str, target: Path, video_key: str | None = None
+) -> None:
+    # Prefer the project's recorded raw-video key (Phase 1 stores it under
+    # input/<filename>); fall back to the phase1/video.mp4 convention.
+    key = video_key or video_raw_key(project_id)
     target.parent.mkdir(parents=True, exist_ok=True)
     _get_adapter().download(key, target)
 

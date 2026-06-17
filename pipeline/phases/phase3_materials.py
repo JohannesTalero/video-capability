@@ -40,10 +40,10 @@ def _visual_plan_from_dict(d: dict[str, Any]) -> PlannedMaterial:
     return PlannedMaterial.from_dict(d)
 
 
-def _ensure_video_local(project_id: str, tmp_dir: Path) -> Path:
+def _ensure_video_local(project_id: str, tmp_dir: Path, video_key: str | None = None) -> Path:
     target = tmp_dir / "video.mp4"
     if not target.exists():
-        download_video_to_local(project_id, target)
+        download_video_to_local(project_id, target, video_key=video_key)
     return target
 
 
@@ -90,6 +90,7 @@ def run_phase3(
     plan: NarrativePlan,
     brand: dict[str, Any],
     visual_specs_summary: dict[str, Any],
+    video_key: str | None = None,
 ) -> dict[str, Any]:
     """Run Phase 3 end-to-end for a project. Returns {"manifest": [...]}."""
     project_id = plan.project_id
@@ -110,7 +111,7 @@ def run_phase3(
 
     with tempfile.TemporaryDirectory(prefix="phase3-") as td:
         tmp_dir = Path(td)
-        video_local = _ensure_video_local(project_id, tmp_dir)
+        video_local = _ensure_video_local(project_id, tmp_dir, video_key=video_key)
 
         # ---- Phase 3a: visual planning (sequential; LLM-vision per material) ----
         planned_by_id: dict[str, PlannedMaterial] = {}
@@ -257,7 +258,9 @@ def run_phase_3(state: ProjectState) -> dict:
 
     # 4. Run Phase 3 (visual planning → render → manifest).
     logger.info(f"[Phase 3] Starting pipeline for project {project_id}...")
-    result = run_phase3(plan, brand, _VISUAL_SPECS_SUMMARY)
+    result = run_phase3(
+        plan, brand, _VISUAL_SPECS_SUMMARY, video_key=state.project.video_original_key
+    )
     manifest: list[dict] = result["manifest"]
 
     # 5. Validate manifest.
