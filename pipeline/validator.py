@@ -1145,6 +1145,11 @@ _DURATION_BY_TIPO_PHASE3: dict[str, float] = {
     "diagrama": 6.0,
 }
 
+# When a material's primary render fails, render_one() falls back to the generic
+# text card (compositions/text_card_fallback.html), which is a fixed 5.0s clip
+# regardless of the material type. Validate fallbacks against that duration.
+_FALLBACK_CARD_DURATION = 5.0
+
 
 def _ffprobe_webm_summary(r2_key: str) -> dict:
     """Download webm from R2 to a temp file and ffprobe it.
@@ -1224,7 +1229,13 @@ def _sample_check_alpha_dimensions_duration(
             )
         spec = entry.get("refined_spec") or entry.get("original_spec") or {}
         tipo = spec.get("tipo") or ""
-        expected = _DURATION_BY_TIPO_PHASE3.get(tipo, 5.0)
+        # Fallback renders are the generic fixed-duration text card, not the
+        # per-type duration — validate them against the fallback duration.
+        expected = (
+            _FALLBACK_CARD_DURATION
+            if entry.get("render_status") == "fallback"
+            else _DURATION_BY_TIPO_PHASE3.get(tipo, 5.0)
+        )
         if abs(float(info.get("duration", 0)) - expected) > 0.2:
             crit.append(
                 CheckResult(
