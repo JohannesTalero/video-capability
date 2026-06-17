@@ -48,12 +48,13 @@ WHISPER_DEVICE = os.environ.get("WHISPER_DEVICE", "cuda")  # "cuda" | "cpu"
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_BASE_URL = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
 
-# Models per use case — overridable via env. Defaults are FREE models for the
-# initial testing phase. Switch to paid models (e.g. "anthropic/claude-sonnet-4.5")
-# when moving to production by setting the env var.
-LLM_MODEL_PLANNER = os.environ.get("LLM_MODEL_PLANNER", "openai/gpt-oss-120b:free")
-LLM_MODEL_VALIDATOR = os.environ.get("LLM_MODEL_VALIDATOR", "openai/gpt-oss-120b:free")
-LLM_MODEL_VISION = os.environ.get("LLM_MODEL_VISION", "openai/gpt-oss-120b:free")
+# Models per use case — overridable via env. Defaults are the production-grade
+# Claude Sonnet 4.6 (strong, balanced). Override per-use-case via env if needed
+# (e.g. a cheaper validator). Free models (openai/gpt-oss-120b:free) remain
+# available by setting the env var during low-cost testing.
+LLM_MODEL_PLANNER = os.environ.get("LLM_MODEL_PLANNER", "anthropic/claude-sonnet-4-6")
+LLM_MODEL_VALIDATOR = os.environ.get("LLM_MODEL_VALIDATOR", "anthropic/claude-sonnet-4-6")
+LLM_MODEL_VISION = os.environ.get("LLM_MODEL_VISION", "anthropic/claude-sonnet-4-6")
 LLM_MODEL_VISION_PLANNER = os.getenv(
     "LLM_MODEL_VISION_PLANNER",
     "anthropic/claude-sonnet-4-6",
