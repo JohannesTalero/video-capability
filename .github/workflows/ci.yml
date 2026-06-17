@@ -49,5 +49,10 @@ jobs:
       - uses: astral-sh/setup-uv@v3
         with: { enable-cache: true }
       - run: uv sync --frozen
-      - run: uv run pip-audit
+      # CVE-2025-3000: torch.jit.script memory corruption, LOCAL-only attack,
+      # no upstream fix version. torch is a transitive dep of openai-whisper and
+      # we never feed untrusted input to torch.jit.script (Whisper uses torch
+      # internally on our own audio). Same rationale as the fastapi/uvicorn
+      # MAL-2026-4750 note in pyproject.toml. Re-evaluate when a fix ships.
+      - run: uv run pip-audit --ignore-vuln CVE-2025-3000
       - run: uv run bandit -r pipeline/ -c pyproject.toml
