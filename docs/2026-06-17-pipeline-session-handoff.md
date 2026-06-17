@@ -25,8 +25,10 @@ Todos los commits están en la rama **`feature/llm-prod-models`** (incluye el de
 | Proyecto | Video | F1 transcripción | F2 plan | F3 materiales |
 |---|---|---|---|---|
 | `diaz-20260617`   | Diaz_final.mp4 (49.6 min) | ✅ 1022 seg | ✅ 9 bloques | ✅ 43 materiales (score 1.00) |
-| `cudris-20260617` | Cudris_sin_reverb.mp4 (32.8 min) | ✅ 777 seg | ✅ 9 bloques | 🔄/✅ (ver estado live) |
-| `dji-20260617`    | DJI_…video-003.mp4 (40.3 min) | ✅ 895 seg | ✅ 10 bloques | ⏳/✅ (ver estado live) |
+| `cudris-20260617` | Cudris_sin_reverb.mp4 (32.8 min) | ✅ 777 seg | ✅ 9 bloques | ✅ 46 materiales (score 1.00) |
+| `dji-20260617`    | DJI_…video-003.mp4 (40.3 min) | ✅ 895 seg | ✅ 10 bloques | ✅ 53 materiales (score 1.00) |
+
+**Los 3 videos completaron Fases 1-3 con validación score 1.00.**
 
 Artefactos por proyecto en R2:
 - `projects/<id>/phase1/transcription.json`
