@@ -17,7 +17,7 @@ import logging
 
 from pipeline.config import LLM_MODEL_PLANNER
 from pipeline.formats import load_format
-from pipeline.llm import get_llm_client
+from pipeline.llm import get_llm_client, strip_code_fence
 from pipeline.models import (
     Block,
     NarrativePlan,
@@ -171,7 +171,7 @@ def _parse_plan(plan_text: str, project_id: str, plan_key: str) -> NarrativePlan
     retry up to MAX_PHASE_RETRIES.
     """
     try:
-        plan_dict = json.loads(plan_text)
+        plan_dict = json.loads(strip_code_fence(plan_text))
     except json.JSONDecodeError as e:
         raise RuntimeError(
             f"LLM response was not valid JSON: {e.msg} at pos {e.pos}. "

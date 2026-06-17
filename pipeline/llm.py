@@ -64,6 +64,27 @@ def is_llm_available() -> bool:
     return bool(OPENROUTER_API_KEY)
 
 
+def strip_code_fence(text: str) -> str:
+    """Strip a leading/trailing markdown code fence from an LLM response.
+
+    Some models (e.g. Claude via OpenRouter) wrap JSON in ```json ... ``` even
+    when response_format=json_object is requested. Returns the inner content;
+    if no fence is present, returns the text unchanged. Single source of truth
+    for the whole pipeline (Phase 2 plan, validator LLM checks, vision planner).
+    """
+    s = text.strip()
+    if not s.startswith("```"):
+        return text
+    s = s[3:]  # drop opening ```
+    newline = s.find("\n")
+    if newline != -1:
+        s = s[newline + 1 :]  # drop the optional language tag line (e.g. "json")
+    s = s.rstrip()
+    if s.endswith("```"):
+        s = s[:-3]
+    return s.strip()
+
+
 def build_image_content(img_b64: str, media_type: str = "image/png") -> dict[str, Any]:
     """
     Build an OpenAI-compatible image content block from base64 data.

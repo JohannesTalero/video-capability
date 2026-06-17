@@ -9,7 +9,12 @@ from pathlib import Path
 from typing import Any
 
 from pipeline.config import LLM_MODEL_VISION_PLANNER
-from pipeline.llm import build_image_content, get_llm_client, is_llm_available
+from pipeline.llm import (
+    build_image_content,
+    get_llm_client,
+    is_llm_available,
+    strip_code_fence,
+)
 from pipeline.models import MaterialSpec, PlannedMaterial
 
 logger = logging.getLogger(__name__)
@@ -59,13 +64,7 @@ def _build_user_message(
 
 
 def _parse_response(content: str) -> dict[str, Any]:
-    s = content.strip()
-    if s.startswith("```"):
-        s = s.split("\n", 1)[1] if "\n" in s else s
-        if s.endswith("```"):
-            s = s[:-3]
-        s = s.strip()
-    return json.loads(s)
+    return json.loads(strip_code_fence(content))
 
 
 def _fallback_keep(
