@@ -68,7 +68,7 @@ OPENROUTER_SITE_URL = os.environ.get("OPENROUTER_SITE_URL", "")
 # Pipeline
 # ---------------------------------------------------------------------------
 
-MAX_PHASE_RETRIES = int(os.environ.get("MAX_PHASE_RETRIES", "3"))
+MAX_PHASE_RETRIES = int(os.environ.get("MAX_PHASE_RETRIES", "5"))
 DEFAULT_BRAND_ID = os.environ.get("DEFAULT_BRAND_ID", "phymac")
 DEFAULT_FORMAT_ID = os.environ.get("DEFAULT_FORMAT_ID", "podcast_hablando_con_profes")
 
