@@ -17,7 +17,7 @@ import logging
 
 from pipeline.config import LLM_MODEL_PLANNER
 from pipeline.formats import load_format
-from pipeline.llm import get_llm_client
+from pipeline.llm import get_llm_client, strip_code_fence
 from pipeline.models import (
     Block,
     NarrativePlan,
@@ -147,10 +147,12 @@ def _format_transcript(transcription: TranscriptionResult) -> str:
     """
     Render the transcription as a plain-text table that the LLM consumes:
 
-        [id]  [start→end]  texto del segmento
+        seg=<id> | t=<start>-<end>s | texto del segmento
 
-    One row per segment. Designed to be unambiguous (square-bracketed
-    fields) and compact (no markdown formatting).
+    One row per segment. The `seg=` / `t=...s` labels keep the segment id and
+    the timestamp unambiguous — an earlier `[id] [start→end]` format let the
+    model occasionally use the timestamp (seconds) as a segment_id, producing
+    orphan ids that fail validation on shorter videos.
     """
     lines = []
     for seg in transcription.segments:
@@ -160,7 +162,7 @@ def _format_transcript(transcription: TranscriptionResult) -> str:
         text = seg.text.strip()
         if len(text) > 1000:
             text = text[:1000] + "…"
-        lines.append(f"[{seg.id}]  [{seg.start:.1f}→{seg.end:.1f}]  {text}")
+        lines.append(f"seg={seg.id} | t={seg.start:.1f}-{seg.end:.1f}s | {text}")
     return "\n".join(lines)
 
 
@@ -171,7 +173,7 @@ def _parse_plan(plan_text: str, project_id: str, plan_key: str) -> NarrativePlan
     retry up to MAX_PHASE_RETRIES.
     """
     try:
-        plan_dict = json.loads(plan_text)
+        plan_dict = json.loads(strip_code_fence(plan_text))
     except json.JSONDecodeError as e:
         raise RuntimeError(
             f"LLM response was not valid JSON: {e.msg} at pos {e.pos}. "

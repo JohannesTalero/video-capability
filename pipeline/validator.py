@@ -26,6 +26,7 @@ from pipeline.llm import (
     build_image_content,
     get_llm_client,
     is_llm_available,
+    strip_code_fence,
 )
 from pipeline.models import (
     CheckResult,
@@ -522,12 +523,12 @@ Respond ONLY with valid JSON:
 
             response = client.chat.completions.create(
                 model=LLM_MODEL_VALIDATOR,
-                max_tokens=256,
+                max_tokens=1024,  # 256 truncated the issues[] JSON → "Unterminated string"
                 response_format={"type": "json_object"},
                 messages=[{"role": "user", "content": prompt}],
             )
             content = response.choices[0].message.content or "{}"
-            result = json.loads(content)
+            result = json.loads(strip_code_fence(content))
             coherent = result.get("coherent", False)
             issues = result.get("issues", [])
 
@@ -697,7 +698,7 @@ Respond ONLY with JSON: {{"readable": true/false, "issues": ["issue1"]}}""",
                     }
                 ],
             )
-            result = json.loads(response.choices[0].message.content)
+            result = json.loads(strip_code_fence(response.choices[0].message.content or "{}"))
             readable = result.get("readable", False)
             issues = result.get("issues", [])
 
@@ -838,7 +839,7 @@ Respond ONLY with JSON: {"branding_visible": true/false, "layout_ok": true/false
                     }
                 ],
             )
-            result = json.loads(response.choices[0].message.content)
+            result = json.loads(strip_code_fence(response.choices[0].message.content or "{}"))
             ok = result.get("layout_ok", True) and len(result.get("artifacts", [])) == 0
             return CheckResult(
                 name=f"vision_{label}",
@@ -1144,6 +1145,11 @@ _DURATION_BY_TIPO_PHASE3: dict[str, float] = {
     "diagrama": 6.0,
 }
 
+# When a material's primary render fails, render_one() falls back to the generic
+# text card (compositions/text_card_fallback.html), which is a fixed 5.0s clip
+# regardless of the material type. Validate fallbacks against that duration.
+_FALLBACK_CARD_DURATION = 5.0
+
 
 def _ffprobe_webm_summary(r2_key: str) -> dict:
     """Download webm from R2 to a temp file and ffprobe it.
@@ -1223,7 +1229,13 @@ def _sample_check_alpha_dimensions_duration(
             )
         spec = entry.get("refined_spec") or entry.get("original_spec") or {}
         tipo = spec.get("tipo") or ""
-        expected = _DURATION_BY_TIPO_PHASE3.get(tipo, 5.0)
+        # Fallback renders are the generic fixed-duration text card, not the
+        # per-type duration — validate them against the fallback duration.
+        expected = (
+            _FALLBACK_CARD_DURATION
+            if entry.get("render_status") == "fallback"
+            else _DURATION_BY_TIPO_PHASE3.get(tipo, 5.0)
+        )
         if abs(float(info.get("duration", 0)) - expected) > 0.2:
             crit.append(
                 CheckResult(

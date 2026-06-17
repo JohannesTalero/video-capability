@@ -124,3 +124,35 @@ def test_validate_phase3_warning_high_fallback_rate():
     ):
         result = validate_phase3(manifest, whitelist=["lower_third"])
     assert any("fallback" in w.lower() for w in result.warnings)
+
+
+@patch("pipeline.validator.head_object_exists", return_value=True)
+@patch("pipeline.validator._ffprobe_webm_summary")
+def test_fallback_diagrama_5s_not_critical(mock_ffprobe, mock_head):
+    # A diagrama (expected 6.0s) that fell back renders the generic 5.0s card.
+    # It must validate against the fallback duration, not the per-type 6.0s.
+    mock_ffprobe.return_value = {
+        "width": 1920,
+        "height": 1080,
+        "duration": 5.0,
+        "alpha_mode": "1",
+    }
+    manifest = [_entry("d1", "fallback", tipo="diagrama")]
+    result = validate_phase3(manifest, whitelist=["diagrama"])
+    assert result.critical_failures == []
+    assert result.passed is True
+
+
+@patch("pipeline.validator.head_object_exists", return_value=True)
+@patch("pipeline.validator._ffprobe_webm_summary")
+def test_ok_diagrama_wrong_duration_is_critical(mock_ffprobe, mock_head):
+    # A normally-rendered diagrama must still match its 6.0s spec (strict).
+    mock_ffprobe.return_value = {
+        "width": 1920,
+        "height": 1080,
+        "duration": 5.0,
+        "alpha_mode": "1",
+    }
+    manifest = [_entry("d1", "ok", tipo="diagrama")]
+    result = validate_phase3(manifest, whitelist=["diagrama"])
+    assert any("duration off" in c.lower() for c in result.critical_failures)

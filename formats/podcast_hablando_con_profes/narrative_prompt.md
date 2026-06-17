@@ -99,14 +99,18 @@ Devuelve un JSON con la estructura indicada al final. NO incluyas comentarios, e
 
 ## Input que recibirás
 
-Una tabla en texto plano con la transcripción:
+Una tabla en texto plano con la transcripción. Cada fila tiene tres campos
+separados por ` | `: el **id del segmento** (`seg=<n>`), el **tiempo** en
+segundos (`t=<inicio>-<fin>s`) y el texto:
 
 ```
-[id]  [start→end]  texto del segmento
+seg=<id> | t=<inicio>-<fin>s | texto del segmento
 ```
+
+⚠️ Para `segment_id` usá SIEMPRE el número de `seg=`, NUNCA el valor de tiempo `t=`.
 
 Ejemplo:
 ```
-[0]  [0.0→17.76]  Mi nombre es Edson Cúdris, soy docente de la Secretaría...
-[1]  [17.76→32.10]  Empecé en el aula hace 23 años en la localidad de Uzme...
+seg=0 | t=0.0-17.8s | Mi nombre es Edson Cúdris, soy docente de la Secretaría...
+seg=1 | t=17.8-32.1s | Empecé en el aula hace 23 años en la localidad de Uzme...
 ```
