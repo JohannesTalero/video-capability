@@ -147,10 +147,12 @@ def _format_transcript(transcription: TranscriptionResult) -> str:
     """
     Render the transcription as a plain-text table that the LLM consumes:
 
-        [id]  [start→end]  texto del segmento
+        seg=<id> | t=<start>-<end>s | texto del segmento
 
-    One row per segment. Designed to be unambiguous (square-bracketed
-    fields) and compact (no markdown formatting).
+    One row per segment. The `seg=` / `t=...s` labels keep the segment id and
+    the timestamp unambiguous — an earlier `[id] [start→end]` format let the
+    model occasionally use the timestamp (seconds) as a segment_id, producing
+    orphan ids that fail validation on shorter videos.
     """
     lines = []
     for seg in transcription.segments:
@@ -160,7 +162,7 @@ def _format_transcript(transcription: TranscriptionResult) -> str:
         text = seg.text.strip()
         if len(text) > 1000:
             text = text[:1000] + "…"
-        lines.append(f"[{seg.id}]  [{seg.start:.1f}→{seg.end:.1f}]  {text}")
+        lines.append(f"seg={seg.id} | t={seg.start:.1f}-{seg.end:.1f}s | {text}")
     return "\n".join(lines)
 
 

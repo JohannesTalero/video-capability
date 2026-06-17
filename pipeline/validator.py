@@ -523,7 +523,7 @@ Respond ONLY with valid JSON:
 
             response = client.chat.completions.create(
                 model=LLM_MODEL_VALIDATOR,
-                max_tokens=256,
+                max_tokens=1024,  # 256 truncated the issues[] JSON → "Unterminated string"
                 response_format={"type": "json_object"},
                 messages=[{"role": "user", "content": prompt}],
             )
